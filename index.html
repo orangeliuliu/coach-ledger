@@ -94,6 +94,9 @@ form.inline .field.num{width:80px}
 .srnew .btns{display:flex;gap:8px}
 @media (max-width:600px){.srnew{grid-template-columns:1fr 1fr}}
 @media (max-width:600px){.srset{display:grid;grid-template-columns:1fr 1fr;gap:10px}.srset label{flex-direction:column;align-items:flex-start;gap:3px}.srset .field{width:100%}}
+.sgchip.guest{border-style:dashed}
+.sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
+.srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline input[name=note]{width:150px}
 .srhowd{padding-inline:16px;font-size:13px;color:var(--muted)}
 .srhowd summary{cursor:pointer;color:var(--accent);width:fit-content}
 .srhowd .srhow{padding:6px 0 0 18px}
@@ -102,7 +105,7 @@ form.inline .field.num{width:80px}
 .srhow b{color:var(--ink);font-weight:600}
 .srtermdel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-inline:16px;font-size:13px}
 .srstu .src .chip{margin-left:6px}
-.srnav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.srnav{grid-template-columns:repeat(4,minmax(0,1fr))!important}
 @media (max-width:600px){.srnav{grid-template-columns:1fr 1fr!important}}
 .srstu .src select{margin-top:4px;width:auto;max-width:100%;font-size:13px;padding:3px 6px}
 .srstu .src>span{display:block;font-size:12px;color:var(--muted)}
@@ -1166,7 +1169,7 @@ function renderLog(days){
       html += `<div class="row ${it.status}${busy?' busy':''}">
         <div class="time">${esc(it.time)}<small>${it.dur} 分</small></div>
         <div class="what"><b>${esc(it.content)}${it.extra?'<span class="x">加課</span>':''}${it.orphan?'<span class="x">舊課表</span>':''}</b><span>${esc(it.place)}${it.kind?' · '+esc(it.kind):''}</span></div>
-        <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${it.sr.makeup.length?` · 補 ${it.sr.makeup.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
+        <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${(it.sr.makeup.length+it.sr.guest.length)?` · 補 ${it.sr.makeup.length+it.sr.guest.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
         <div class="act">
           <button class="seg yes" aria-pressed="${it.status==='held'}" data-key="${esc(it.key)}" data-s="held">有開</button>
           <button class="seg no" aria-pressed="${it.status==='off'}" data-key="${esc(it.key)}" data-s="off">停課</button>
@@ -1264,7 +1267,7 @@ let pcDetail = null;
 /* ---------- 自營團課: 一期 8 個日期，預繳期課（一種 8 堂 / 兩種 16 堂）、單堂報名、請假補課 ---------- */
 // config/selfrun v4: {v, cids:[classId…], terms:[{id, name, dates:[ds…], price:{one, both}, single, venue, students:[{id, name, pkg:'both'|classId, fee, paid, from}]}]}
 // Each term keeps its own prices, so opening a new term never changes an old one.
-// month.att[ds_cid] = {leave:[studentId], makeup:[studentId], single:[{name, amount}]}
+// month.att[ds_cid] = {leave:[studentId], makeup:[studentId of any term], guest:[{name, note}] (名單外補課, no fee), single:[{name, amount}]}
 let selfrun = {v:4, cids:[], terms:[]};
 const saveSelfrun = () => queue('config/selfrun', selfrun);
 function loadSelfrun(){
@@ -1312,13 +1315,13 @@ function srSession(ds, cid, mo){
   const a = (mo.att||{})[key] || {}, e = (mo.entries||{})[key] || {};
   const enrolled = t.students.filter(st=>inClass(st, cid) && ds >= startOf(t, st));
   const leave = enrolled.filter(st=>(a.leave||[]).includes(st.id)).map(st=>st.id);
-  const makeup = (a.makeup||[]).filter(id=>t.students.some(st=>st.id===id));
-  const single = a.single || [];
+  const makeup = (a.makeup||[]).filter(id=>!!stuOf(id).st);   // may be a student of an earlier term
+  const guest = a.guest || [], single = a.single || [];
   const off = srOffSet(t, mo, ds.slice(0,7));
   const fees = enrolled.reduce((s,st)=>s+shareOf(t, st, off), 0), singles = single.reduce((s,x)=>s+(x.amount||0), 0);
   const value = Math.round(fees + singles - (t.venue||0));
-  return {t, ds, cid, key, enrolled, leave, makeup, single, fees:Math.round(fees), singles,
-    present: enrolled.length - leave.length + makeup.length + single.length,
+  return {t, ds, cid, key, enrolled, leave, makeup, guest, single, fees:Math.round(fees), singles,
+    present: enrolled.length - leave.length + makeup.length + guest.length + single.length,
     status: e.s==='off' ? 'off' : 'held', value, pay: e.pay ?? value};
 }
 // change one session's attendance, whichever month it is in
@@ -1341,8 +1344,12 @@ function srTally(t, sessions){
     if(s.status!=='held') return;
     const past = s.ds <= TODAY;
     s.enrolled.forEach(st=>{ const x = r[st.id]; x.due++; if(s.leave.includes(st.id)){ x.leave++; x.leaveDates.push(s); } else if(past) x.came++; });
-    s.makeup.forEach(id=>{ const x = r[id]; if(!x) return; x.makeup++; x.makeupDates.push(s); if(past) x.came++; });
   });
+  // make-ups can be taken in any term (e.g. a 第 6 期 leave made up during 第 7 期)
+  (selfrun.terms||[]).forEach(tt=>(tt===t ? sessions : termSessions(tt)).forEach(s=>{
+    if(s.status!=='held') return;
+    s.makeup.forEach(id=>{ const x = r[id]; if(!x) return; x.makeup++; x.makeupDates.push(s); if(s.ds <= TODAY) x.came++; });
+  }));
   Object.values(r).forEach(x=>x.owed = Math.max(0, x.leave - x.makeup));
   return r;
 }
@@ -1443,15 +1450,25 @@ function srPanel(key){
   const t = s.t, tally = srTally(t, termSessions(t));
   const cands = t.students.filter(st=>!s.makeup.includes(st.id) && !s.enrolled.some(e=>e.id===st.id))
     .sort((a,b)=>(tally[b.id].owed - tally[a.id].owed) || a.name.localeCompare(b.name,'zh-Hant'));
-  const nm = id => (t.students.find(st=>st.id===id)||{}).name || '';
+  // students of earlier terms who still have leaves to make up
+  const first = d => d.dates.slice().sort()[0] || '';
+  const prev = (selfrun.terms||[]).filter(x=>x!==t && first(x) < first(t)).flatMap(pt=>{
+    const pty = srTally(pt, termSessions(pt));
+    return pt.students.filter(st=>pty[st.id].owed>0 && !s.makeup.includes(st.id)).map(st=>({st, pt, owed:pty[st.id].owed}));
+  });
+  const nm = id => { const r = stuOf(id); return r.st ? r.st.name + (r.t!==t ? `（${r.t.name}）` : '') : ''; };
+  const gnames = [...new Set((selfrun.terms||[]).flatMap(x=>termSessions(x)).flatMap(x=>x.guest.map(y=>y.name)).filter(Boolean))];
   const names = [...new Set(termSessions(t).flatMap(x=>x.single.map(y=>y.name)).filter(Boolean))];
   return `<div class="attpanel srpanel">
     <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，逐日記錄也會變停課">這堂停課</button></span></div>
     <div class="attgrid">${s.enrolled.map(st=>{ const lv = s.leave.includes(st.id);
       return `<label class="attm${lv?' leave':''}"><input type="checkbox" data-srlv="${esc(key)}|${st.id}"${lv?'':' checked'}>${esc(st.name)}${lv?'<small>請假</small>':''}</label>`; }).join('') || '<span class="hint">這堂沒有期課學員</span>'}</div>
-    <div class="atthead"><b>補課</b><span class="hint">別堂請假的學員來這堂補（不另收費）</span></div>
-    <div class="attgrid">${s.makeup.map(id=>`<span class="sgchip">${esc(nm(id))}<button class="sgx" aria-label="取消 ${esc(nm(id))} 的補課" data-srmkdel="${esc(key)}|${id}">×</button></span>`).join('')}
-      <form class="srmk inline" data-key="${esc(key)}"><select class="field" name="s" required aria-label="補課學員"><option value="">選學員…</option>${cands.map(st=>`<option value="${st.id}">${esc(st.name)}${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</select><button class="btn small" type="submit">＋ 補課</button></form></div>
+    <div class="atthead"><b>補課</b><span class="hint">請假的學員來這堂補，或名單外的人來補課（都不另收費）</span></div>
+    <div class="attgrid">${s.makeup.map(id=>`<span class="sgchip">${esc(nm(id))}<button class="sgx" aria-label="取消 ${esc(nm(id))} 的補課" data-srmkdel="${esc(key)}|${id}">×</button></span>`).join('')}${s.guest.map((g,i)=>`<span class="sgchip guest">${esc(g.name)}${g.note?`<small>${esc(g.note)}</small>`:''}<button class="sgx" aria-label="取消 ${esc(g.name)} 的補課" data-srgsdel="${esc(key)}|${i}">×</button></span>`).join('')}
+      <form class="srmk inline" data-key="${esc(key)}"><select class="field" name="s" required aria-label="補課學員"><option value="">選學員…</option>${cands.length?`<optgroup label="${esc(t.name)}學員">${cands.map(st=>`<option value="${st.id}">${esc(st.name)}${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</optgroup>`:''}${prev.length?`<optgroup label="之前的期數，還沒補完">${prev.map(x=>`<option value="${x.st.id}">${esc(x.st.name)}（${esc(x.pt.name)}待補 ${x.owed}）</option>`).join('')}</optgroup>`:''}</select><button class="btn small" type="submit">＋ 補課</button></form></div>
+    <div class="attgrid srguestrow"><span class="hint">名單外的人：</span>
+      <form class="srgs inline" data-key="${esc(key)}"><input class="field" name="n" placeholder="名字" required autocomplete="off" list="dl-srg-${esc(key)}" aria-label="名單外補課的名字"><input class="field" name="note" placeholder="備註（可不填）" autocomplete="off" aria-label="備註"><button class="btn small" type="submit">＋ 名單外補課</button>
+      <datalist id="dl-srg-${esc(key)}">${gnames.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></form></div>
     <div class="atthead"><b>單堂報名</b><span class="hint">這次來、這次付</span></div>
     <div class="attgrid">${s.single.map((x,i)=>`<span class="sgchip">${esc(x.name||'（沒寫名字）')} · NT$${money(x.amount)}<button class="sgx" aria-label="刪除這筆單堂" data-srsgdel="${esc(key)}|${i}">×</button></span>`).join('')}
       <form class="srsg inline" data-key="${esc(key)}"><input class="field" name="n" placeholder="名字" autocomplete="off" list="dl-srn-${esc(key)}" aria-label="單堂學員名字"><input class="field num" name="a" type="number" min="0" step="10" inputmode="numeric" value="${t.single||0}" required aria-label="收了多少"><button class="btn small" type="submit">＋ 單堂</button>
@@ -1503,7 +1520,7 @@ function renderSelf(){
     const cells = selfrun.cids.map(cid=>{
       const s = sessions.find(x=>x.ds===ds && x.cid===cid); if(!s) return '<td></td>';
       if(s.status==='off') return `<td><button class="srcell off" data-sroff="${esc(s.key)}|held" title="恢復成有開"><b>停課</b><span class="srtags">點一下恢復</span></button></td>`;
-      const tags = [s.leave.length?`假 ${s.leave.length}`:'', s.makeup.length?`補 ${s.makeup.length}`:'', s.single.length?`單 ${s.single.length}`:''].filter(Boolean).join(' · ');
+      const tags = [s.leave.length?`假 ${s.leave.length}`:'', (s.makeup.length+s.guest.length)?`補 ${s.makeup.length+s.guest.length}`:'', s.single.length?`單 ${s.single.length}`:''].filter(Boolean).join(' · ');
       return `<td><button class="srcell${ds>TODAY?' fut':''}" data-srp="${esc(s.key)}" aria-expanded="${srOpen===s.key}"><b>${s.present} 人</b><span class="srtags">${tags||'全到'}</span><span class="num">NT$${money(s.pay)}</span></button></td>`;
     }).join('');
     const open = selfrun.cids.map(cid=>ds+'_'+cid).find(k=>k===srOpen);
@@ -1532,6 +1549,11 @@ function renderSelf(){
   sessions.forEach(s=>s.single.forEach((x,i)=>{ const n = x.name || '（沒寫名字）'; (sg[n] = sg[n] || []).push({s, i, x}); }));
   const sgList = Object.entries(sg).map(([n,xs])=>`<li><div class="dgname"><b>${esc(n)}</b><span class="hint">${xs.length} 次 · NT$${money(xs.reduce((a,y)=>a+(y.x.amount||0),0))}</span></div>
     <div class="dgdates">${xs.map(y=>`<span class="sgchip">${md(y.s.ds)} ${esc(srShort(y.s.cid))} · NT$${money(y.x.amount)}<button class="sgx" aria-label="刪除 ${md(y.s.ds)} 這筆" data-srsgdel="${esc(y.s.key)}|${y.i}">×</button></span>`).join('')}</div></li>`).join('');
+  const gg = {};
+  sessions.forEach(x=>x.guest.forEach((g,i)=>{ (gg[g.name] = gg[g.name] || []).push({s:x, i, g}); }));
+  const guestN = sessions.reduce((a,x)=>a+x.guest.length,0);
+  const gList = Object.entries(gg).map(([n,xs])=>`<li><div class="dgname"><b>${esc(n)}</b><span class="hint">${xs.length} 次</span></div>
+    <div class="dgdates">${xs.map(y=>`<span class="sgchip">${md(y.s.ds)} ${esc(srShort(y.s.cid))}${y.g.note?` · ${esc(y.g.note)}`:''}<button class="sgx" aria-label="刪除 ${md(y.s.ds)} 這筆" data-srgsdel="${esc(y.s.key)}|${y.i}">×</button></span>`).join('')}</div></li>`).join('');
   const sessOpts = sessions.filter(s=>s.status==='held').map(s=>`<option value="${esc(s.key)}"${s.ds===nextDate && s.cid===selfrun.cids[0]?' selected':''}>${md(s.ds)} ${esc(srShort(s.cid))}</option>`).join('');
   $('#view').innerHTML = `
     <div class="toolbar"><span class="hint">${esc(t.name)}共 ${dates.length} 個日期、兩堂課。期課預繳（一種 ${dates.length} 堂 NT$${money((t.price||{}).one)}，兩種 ${dates.length*2} 堂 NT$${money((t.price||{}).both)}），單堂 NT$${money(t.single)}。點名在下面的表格或「逐日記錄」的「點名」按鈕。</span></div>
@@ -1565,6 +1587,7 @@ function renderSelf(){
       <a class="recnav-item" href="#sr-sess" data-jump="sr-sess"><b>場次點名</b><span class="chip ok">${held.length} 堂</span></a>
       <a class="recnav-item" href="#sr-stu" data-jump="sr-stu"><b>學員</b><span class="chip ${owedN||unpaid.length?'wait':'ok'}">${t.students.length} 位${unpaid.length?` · ${unpaid.length} 位未繳`:''}${owedN?` · ${owedN} 位待補課`:''}</span></a>
       <a class="recnav-item" href="#sr-single" data-jump="sr-single"><b>單堂報名</b><span class="chip ok">${singleN} 次</span></a>
+      <a class="recnav-item" href="#sr-guest" data-jump="sr-guest"><b>名單外補課</b><span class="chip ok">${sessions.reduce((a,x)=>a+x.guest.length,0)} 次</span></a>
     </nav>
     <section class="recsec card srsec">
       <div class="rechead"><h3>${esc(t.name)} · ${md(dates[0])}–${md(dates[dates.length-1])}</h3><span class="hint">${esc((schedule.find(c=>c.id===selfrun.cids[0])||{}).place||'')}</span></div>
@@ -1601,6 +1624,12 @@ function renderSelf(){
           <div class="btns"><button class="btn" type="submit">＋ 單堂</button></div>
           <datalist id="dl-srsg">${Object.keys(sg).filter(n=>n!=='（沒寫名字）').map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
         </form>
+      </div>
+    </section>
+    <section class="recsec card srsec" id="sr-guest">
+      <div class="rechead"><h3>名單外補課</h3><span class="hint">不在${esc(t.name)}名單上的人來補課，不收費 · ${guestN} 次</span></div>
+      <div class="dropblock">
+        ${gList?`<ul class="dropgroups">${gList}</ul>`:'<p class="hint" style="margin:0">還沒有。在場次點名的格子裡「名單外的人」新增。</p>'}
       </div>
     </section>
 `;
@@ -1861,6 +1890,10 @@ document.addEventListener('click', e=>{
     const i = t.dataset.srmkdel.lastIndexOf('|'), k = t.dataset.srmkdel.slice(0,i), id = t.dataset.srmkdel.slice(i+1);
     srEdit(k, a=>{ a.makeup = (a.makeup||[]).filter(x=>x!==id); }); render(); toast('已取消補課'); return;
   }
+  if(t.dataset.srgsdel){
+    const i = t.dataset.srgsdel.lastIndexOf('|'), k = t.dataset.srgsdel.slice(0,i), idx = Number(t.dataset.srgsdel.slice(i+1));
+    srEdit(k, a=>{ (a.guest||[]).splice(idx,1); }); render(); toast('已刪除這筆名單外補課'); return;
+  }
   if(t.dataset.srsgdel){
     const i = t.dataset.srsgdel.lastIndexOf('|'), k = t.dataset.srsgdel.slice(0,i), idx = Number(t.dataset.srsgdel.slice(i+1));
     srEdit(k, a=>{ (a.single||[]).splice(idx,1); }); render(); toast('已刪除這筆單堂'); return;
@@ -2027,6 +2060,12 @@ document.addEventListener('submit', e=>{
     const k = f.dataset.key, id = f.elements.s.value; if(!id) return;
     srEdit(k, a=>{ a.makeup = (a.makeup||[]).filter(x=>x!==id); a.makeup.push(id); });
     render(); toast(`已登記 ${(stuOf(id).st||{}).name||''} ${md(k.slice(0,10))} 補課`); return;
+  }
+  if(f.classList.contains('srgs')){
+    const k = f.dataset.key, name = f.elements.n.value.trim(); if(!name) return;
+    const g = {name}; const note = f.elements.note.value.trim(); if(note) g.note = note;
+    srEdit(k, a=>{ (a.guest = a.guest || []).push(g); });
+    render(); toast(`已登記 ${name} ${md(k.slice(0,10))} 補課（名單外）`); return;
   }
   if(f.classList.contains('srsg') || f.classList.contains('srsg2')){
     const k = f.dataset.key || f.elements.k.value; if(!k) return;
