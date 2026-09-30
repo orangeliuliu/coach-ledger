@@ -1,0 +1,2132 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="收入對帳">
+<meta name="theme-color" content="#2F45D0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232F45D0'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E$%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%232F45D0'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='700'%3E$%3C/text%3E%3C/svg%3E">
+<title>教練月收入對帳</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1; --ink:#161B22; --muted:#5B6573; --line:#D7DDE4;
+  --accent:#2F45D0; --accent-ink:#FFFFFF; --accent-soft:#E3E7FB;
+  --ok:#17804A; --ok-soft:#DDF1E5; --off:#C23B2B; --off-soft:#F8E1DD; --wait:#A86A0E; --wait-soft:#F7EBD4;
+  --num:"Barlow Condensed","Barlow","Noto Sans TC",system-ui,sans-serif;
+  --body:"Noto Sans TC","Barlow",system-ui,-apple-system,"Microsoft JhengHei",sans-serif;
+  --shadow:0 1px 2px rgba(22,27,34,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0F1216; --surface:#171B21; --surface-2:#20262E; --ink:#E6EAEF; --muted:#94A0AE; --line:#2B323C;
+    --accent:#8C9BFF; --accent-ink:#0F1216; --accent-soft:#23294A;
+    --ok:#4CC486; --ok-soft:#153324; --off:#F07B69; --off-soft:#3A1D19; --wait:#E3A84E; --wait-soft:#33270F;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0F1216; --surface:#171B21; --surface-2:#20262E; --ink:#E6EAEF; --muted:#94A0AE; --line:#2B323C;
+  --accent:#8C9BFF; --accent-ink:#0F1216; --accent-soft:#23294A;
+  --ok:#4CC486; --ok-soft:#153324; --off:#F07B69; --off-soft:#3A1D19; --wait:#E3A84E; --wait-soft:#33270F;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.backup{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.backup .btns{display:flex;gap:6px}
+.backup .btn{padding:5px 10px;font-size:13px}
+.srblock{display:flex;flex-direction:column;gap:12px;padding-top:4px}
+.emptystate{margin-top:12px;padding:14px 16px;border-color:var(--wait);background:var(--wait-soft)}
+.emptystate p{margin:4px 0 0;font-size:14px}
+.recsec table.srtable,.recsec table.srstu{min-width:0}
+.srtable{width:100%;border-collapse:collapse;table-layout:fixed}
+.srtable th,.srtable td{padding:6px;border-top:1px solid var(--line);text-align:left;vertical-align:top}
+.srtable thead th{font-size:12px;color:var(--muted);font-weight:600;border-top:0}
+.recsec table.srtable th:nth-child(1){width:60px}.recsec table.srtable th:nth-child(n+2){width:auto}
+.srstu{width:100%;border-collapse:collapse}
+.srstu th,.srstu td{padding:10px 8px;border-top:1px solid var(--line);vertical-align:top;text-align:left}
+.srstu thead th{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+.srstu .r{text-align:right}
+.recsec table.srstu th:nth-child(1){width:34%}.recsec table.srstu th:nth-child(2){width:180px}.recsec table.srstu th:nth-child(3){width:auto}.recsec table.srstu th:nth-child(4){width:44px}
+.srstu .big{font-family:var(--num);font-size:20px;font-weight:700}
+@media (max-width:600px){.recsec table.srstu th:nth-child(1){width:30%}.recsec table.srstu th:nth-child(2){width:146px}.srstu th:nth-child(4),.srstu td.ppact{display:none}.srstu th,.srstu td{padding:10px 4px}.srfee input[type=date]{width:100%}}
+.srtable tbody th{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:15px;padding-top:12px}
+.srtable tbody th small{display:block;font-size:11px;color:var(--muted);font-weight:400}
+.srtable tr.today th{color:var(--accent)}
+.srcell{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.srcell:hover{border-color:var(--accent)}
+.srcell[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.srcell.fut{background:transparent;border-style:dashed}
+.srcell.off{color:var(--off);background:var(--off-soft);border-color:transparent;cursor:default}
+.srcell b{font-size:15px}
+.srcell .srtags{font-size:12px;color:var(--muted)}
+.srcell .num{font-family:var(--num);font-variant-numeric:tabular-nums;font-size:13px}
+.srpanelrow>td{padding:0 0 8px!important;border-top:0!important}
+.srpanel{padding:10px 14px 14px;border:1px solid var(--line);border-radius:10px}
+.attm.leave{color:var(--muted)}
+.attm small{font-size:11px;color:var(--off);text-decoration:none;display:inline-block}
+form.inline{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+form.inline .field{width:auto;padding:4px 8px;font-size:14px}
+form.inline .field.num{width:80px}
+.srcalc{margin:0;font-size:12px;color:var(--muted)}
+.srcalc b{color:var(--ink);font-family:var(--num)}
+.srsec{margin-top:12px;display:flex;flex-direction:column;gap:10px;padding-bottom:14px;scroll-margin-top:64px}
+@media (prefers-reduced-motion:no-preference){.srsec.flash{animation:dayflash 1.4s ease-out}}
+.srsec .tablewrap{padding-inline:12px}
+.srterms{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.srnew{margin-top:10px;padding:14px 16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;align-items:end}
+.srnew label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+.srnew .field{width:100%}
+.srnew-title,.srnew .chk,.srnew .btns{grid-column:1/-1;margin:0}
+.srnew-title{display:flex;flex-direction:column;gap:2px}.srnew-title .hint{font-size:12px;color:var(--muted)}
+.srnew .chk{flex-direction:row;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+.srnew .chk input{width:18px;height:18px}
+.srnew .btns{display:flex;gap:8px}
+@media (max-width:600px){.srnew{grid-template-columns:1fr 1fr}}
+@media (max-width:600px){.srset{display:grid;grid-template-columns:1fr 1fr;gap:10px}.srset label{flex-direction:column;align-items:flex-start;gap:3px}.srset .field{width:100%}}
+.srhowd{padding-inline:16px;font-size:13px;color:var(--muted)}
+.srhowd summary{cursor:pointer;color:var(--accent);width:fit-content}
+.srhowd .srhow{padding:6px 0 0 18px}
+.srcell.off{cursor:pointer}
+.srhow{margin:0;padding:0 16px 0 34px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.srhow b{color:var(--ink);font-weight:600}
+.srtermdel{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-inline:16px;font-size:13px}
+.srstu .src .chip{margin-left:6px}
+.srnav{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+@media (max-width:600px){.srnav{grid-template-columns:1fr 1fr!important}}
+.srstu .src select{margin-top:4px;width:auto;max-width:100%;font-size:13px;padding:3px 6px}
+.srstu .src>span{display:block;font-size:12px;color:var(--muted)}
+.srfee label{display:flex;align-items:center;justify-content:flex-end;gap:4px}
+.srfee label.small{font-size:11px;color:var(--muted);margin-top:4px;flex-direction:column;align-items:flex-end;gap:2px}
+.srfee .field{width:90px;padding:3px 6px;font-size:14px}
+.srfee input[type=date]{width:130px;font-size:12px}
+.srstu td .small{font-size:12px;color:var(--muted)}
+.srstu td .chip{margin-top:4px}
+.sradd{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:0 16px}
+.sradd label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+.sradd .field{width:auto;min-width:0}
+.sradd input[name=n]{width:120px}.sradd input[name=f]{width:90px}
+.srdates{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-inline:16px}
+.srdates .sgadd{margin-left:0}
+.srnote{margin:0;padding-inline:16px;font-size:12px;color:var(--muted)}
+@media (max-width:600px){.srsec .tablewrap{padding-inline:4px}.srcell{padding:6px 8px}.srstu .ppact{width:32px}}
+.srblock{scroll-margin-top:64px}
+@media (prefers-reduced-motion:no-preference){.srblock.flash{animation:dayflash 1.4s ease-out}}
+.attm .tag{font-size:10px;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:0 4px;margin-left:2px}
+.addmember select{width:auto}
+.srblock+.srblock{border-top:1px solid var(--line);padding-top:14px}
+#rec-selfrun{margin-top:12px}
+.srblock .rechead h3{font-size:18px}
+.srblock .rechead h3{margin:0;font-size:16px;font-weight:700}
+.srset{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding-inline:16px;font-size:12px;color:var(--muted)}
+.srset label{display:flex;align-items:center;gap:6px}
+.srset .field{width:100px;font-family:var(--num);font-size:15px;font-variant-numeric:tabular-nums}
+.addmember{display:flex;gap:8px;padding:0 16px 14px;flex-wrap:wrap}
+.addmember .field{max-width:220px}
+.attbtn{margin-right:8px}
+.attpanel{padding:10px 14px 14px 88px;border-top:1px dashed var(--line);background:var(--surface-2);display:flex;flex-direction:column;gap:8px}
+.atthead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+.atthead .hint{font-size:12px;color:var(--muted)}
+.attbtns{margin-left:auto;display:flex;gap:6px}
+.attgrid{display:flex;flex-wrap:wrap;gap:6px}
+.attm{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:14px;cursor:pointer}
+.attm input{width:16px;height:16px;accent-color:var(--ok)}
+.attm:has(input:not(:checked)){color:var(--muted);text-decoration:line-through;background:transparent}
+.mdelrow td{background:var(--off-soft);padding:10px 14px}
+.mdelrow p{margin:0 0 8px}
+.mdelopts{display:flex;flex-direction:column;gap:8px}
+.mdelopts>div{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.mdelopts .hint{font-size:12px;color:var(--muted);flex:1 1 220px}
+.mdelopts .warnt{color:var(--off);font-weight:600}
+.sgrow td{background:var(--surface-2);padding:6px 12px 10px}
+.sgdates{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sgchip{display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 10px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:13px;font-family:var(--num);font-variant-numeric:tabular-nums}
+.sgchip.editing{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sgx,.sgedit{border:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:99px;padding:1px 6px;font-size:13px}
+.sgx:hover{color:var(--off);background:var(--off-soft)}
+.sgedit{color:var(--accent);font-family:var(--body)}
+.sgedit:hover{background:var(--accent-soft)}
+.sgadd{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
+.sgadd .field{width:auto;padding:3px 6px;font-size:13px}
+.dropgroups{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.dropgroups li{display:flex;flex-direction:column;gap:4px}
+.dgname{display:flex;gap:8px;align-items:baseline}
+.dgname .hint{font-size:12px;color:var(--muted)}
+.dgdates{display:flex;flex-wrap:wrap;gap:6px}
+.dropform2 .btns{display:flex;gap:6px}
+.dropform2.editing{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
+.dropform2 .ppedit-title{grid-column:1/-1}
+.dropblock{display:flex;flex-direction:column;gap:8px;padding:10px 16px;background:var(--surface-2);border-radius:10px;margin-inline:16px}
+.dropform2{display:grid;grid-template-columns:1.2fr 1fr .9fr auto;gap:8px;align-items:end}
+.dropform2 label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+@media (max-width:600px){.dropform2{grid-template-columns:1fr 1fr}.dropform2 .btn{grid-column:1/-1}}
+.droplist li .num{font-family:var(--num);font-variant-numeric:tabular-nums}
+.droplist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.droplist li{display:flex;gap:10px;align-items:center;font-size:14px}
+.dropform{display:flex;gap:8px;flex-wrap:wrap}
+.dropform .field{width:auto;flex:1 1 120px}
+@media (max-width:600px){.attpanel{padding-left:14px}}
+.conflict{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 16px;border-color:var(--wait);background:var(--wait-soft);font-size:14px}
+.conflict .btns{display:flex;gap:8px;flex-wrap:wrap}
+.more{position:relative}
+.more summary{list-style:none;cursor:pointer}
+.more summary::-webkit-details-marker{display:none}
+.more .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:15;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;min-width:190px;padding:4px}
+.more .menu button{border:0;background:transparent;text-align:left;padding:9px 12px;border-radius:7px;font-size:14px}
+.more .menu button:hover{background:var(--surface-2)}
+.more .menu button.danger{color:var(--off)}
+@media (max-width:600px){.backup{align-items:flex-start}.more .menu{left:0;right:auto}}
+.savestate.warn{color:var(--wait)}
+.savestate.warn i{background:var(--wait)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 64px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--num);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500}
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav h1{margin:0;font-family:var(--num);font-weight:700;font-size:40px;line-height:1;letter-spacing:.01em;min-width:7.2em;text-align:center}
+.monthnav h1 small{font-family:var(--body);font-size:18px;font-weight:500;margin-inline:2px}
+.iconbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:20px;line-height:1}
+.iconbtn:hover{border-color:var(--accent)}
+.iconbtn:disabled{opacity:.35;cursor:default;border-color:var(--line)}
+.savestate{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.savestate i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.savestate.busy i{background:var(--wait)}
+.savestate.err i{background:var(--off)}
+.savestate.local i{background:var(--muted)}
+
+/* summary */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.stat{background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.stat .lab{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.stat .val{font-family:var(--num);font-size:34px;font-weight:700;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat .val .cur{font-size:16px;font-weight:600;color:var(--muted);margin-right:3px}
+.stat .sub{font-size:12px;color:var(--muted)}
+.stat.main .val{color:var(--ok)}
+.stat.wait .val{color:var(--wait)}
+.stat.off .val{color:var(--off)}
+.progress{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;display:flex;margin-top:6px}
+.progress b{display:block;height:100%}
+@media (max-width:720px){.summary{grid-template-columns:1fr 1fr}.stat .val{font-size:28px}.monthnav h1{font-size:32px}}
+@media (max-width:480px){.stat{padding:12px}.stat .val{font-size:23px}.stat .val .cur{font-size:13px}}
+
+/* tabs */
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:6px;display:flex;gap:6px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:transparent;padding:8px 12px;white-space:nowrap;border-radius:9px;font-weight:500;color:var(--muted)}
+.tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
+.tab:not([aria-selected="true"]):hover{background:var(--surface-2);color:var(--ink)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.toolbar .hint{font-size:13px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface);padding:7px 12px;border-radius:9px;font-size:14px;font-weight:500}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08);color:var(--accent-ink)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--off);border-color:transparent}
+.confirmbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--wait-soft);border-radius:10px;padding:10px 12px;font-size:14px}
+
+/* days */
+.days{display:flex;flex-direction:column;gap:12px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.day{scroll-margin-top:64px}
+.recsec{scroll-margin-top:64px}
+@media (prefers-reduced-motion:no-preference){.recsec.flash{animation:dayflash 1.4s ease-out}}
+.recnav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);overflow:hidden;margin-top:12px}
+.recnav-item{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;background:var(--surface);color:var(--ink);text-decoration:none}
+.recnav-item:hover{background:var(--surface-2)}
+.recnav-item b{font-size:14px;font-weight:600}
+.recnav-item b::after{content:' ↓';color:var(--muted);font-weight:400}
+@media (max-width:600px){.recnav{grid-template-columns:1fr 1fr}}
+@keyframes dayflash{0%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:no-preference){.day.flash{animation:dayflash 1.4s ease-out}}
+.cal{padding:12px}
+.calhead,.calgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.calhead span{text-align:center;font-size:12px;color:var(--muted);font-weight:500;padding-bottom:4px}
+.calhead span.we{color:var(--off)}
+.calcell{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:64px;padding:5px 6px;border:1px solid var(--line);border-radius:9px;background:var(--surface);text-align:left;cursor:pointer;min-width:0}
+.calcell:hover{border-color:var(--accent)}
+.calcell.blank{border:0;background:transparent;cursor:default}
+.calcell.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.calcell.empty{background:var(--surface-2)}
+.calcell .cd{font-family:var(--num);font-weight:700;font-size:16px;line-height:1}
+.calcell.today .cd{color:var(--accent)}
+.cdots{display:flex;flex-wrap:wrap;gap:2px}
+.cdots i,.callegend i{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--ok)}
+.cdots i.off,.callegend i.off{background:var(--off)}
+.cdots i.extra,.callegend i.extra{background:var(--accent)}
+.calcell.future .cdots i.held{background:transparent;box-shadow:inset 0 0 0 1.5px var(--ok)}
+.calcell.future .cdots i.held.extra{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.callegend .fut i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--ok)}
+.camt{font-family:var(--num);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:auto}
+.coff{position:absolute;top:4px;right:4px;font-size:10px;font-weight:700;color:var(--off);background:var(--off-soft);border-radius:4px;padding:0 3px;line-height:1.5}
+.callegend{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:10px;font-size:12px;color:var(--muted)}
+.callegend span{display:inline-flex;align-items:center;gap:4px}
+.callegend span:last-child{margin-left:auto}
+@media (max-width:480px){.calcell{min-height:54px;padding:4px}.camt{display:none}.cdots i{width:6px;height:6px}.coff{display:none}.calcell.hasoff{background:var(--off-soft)}.calcell .cd{font-size:15px}}
+.day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.dayhead{display:flex;align-items:baseline;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.dayhead .d{font-family:var(--num);font-size:22px;font-weight:700;line-height:1}
+.dayhead .w{font-weight:700}
+.dayhead .w.we{color:var(--off)}
+.dayhead .tag{font-size:11px;font-weight:600;letter-spacing:.06em;background:var(--accent);color:var(--accent-ink);padding:1px 7px;border-radius:99px}
+.dayhead .tot{margin-left:auto;font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:baseline}
+.dayhead .tot .num{font-size:18px;color:var(--ink);font-weight:600}
+.dayhead .mini{display:flex;gap:3px}
+.dayhead .mini span{width:8px;height:8px;border-radius:2px;background:var(--surface-2);border:1px solid var(--line)}
+.dayhead .mini span.held{background:var(--ok);border-color:var(--ok)}
+.dayhead .mini span.off{background:var(--off);border-color:var(--off)}
+.row{display:grid;grid-template-columns:62px 1fr auto auto;grid-template-areas:"time what pay act";gap:4px 12px;align-items:center;padding:10px 14px;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row.held{background:linear-gradient(90deg,var(--ok-soft),transparent 60%)}
+.row.off{background:linear-gradient(90deg,var(--off-soft),transparent 60%)}
+.row .time{grid-area:time;font-family:var(--num);font-size:20px;font-weight:600;line-height:1.1}
+.row .time small{display:block;font-family:var(--body);font-size:11px;color:var(--muted);font-weight:400}
+.row .what{grid-area:what;min-width:0}
+.row .what b{font-weight:500;display:block;overflow-wrap:anywhere}
+.row .what span{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.row .what .x{font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:0 5px;margin-left:4px}
+.row .pay{grid-area:pay;display:flex;align-items:center;gap:2px;color:var(--muted);font-size:13px}
+.payin{width:92px;text-align:right;border:1px solid transparent;background:transparent;border-radius:7px;padding:3px 6px;font-family:var(--num);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.payin:hover{border-color:var(--line)}
+.payin:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.payin.changed{color:var(--accent)}
+.row.off .payin{text-decoration:line-through;color:var(--muted)}
+.row .act{grid-area:act;display:flex;gap:4px;align-items:center}
+.seg{border:1px solid var(--line);background:var(--surface);padding:6px 11px;border-radius:8px;font-size:13px;font-weight:500;color:var(--muted);min-width:52px}
+.seg:hover{color:var(--ink);border-color:var(--muted)}
+.seg.yes[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:#fff}
+.seg.no[aria-pressed="true"]{background:var(--off);border-color:var(--off);color:#fff}
+:root[data-theme="dark"] .seg[aria-pressed="true"]{color:#0F1216}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg[aria-pressed="true"]{color:#0F1216}}
+.del{border:0;background:transparent;color:var(--muted);font-size:18px;width:28px;height:28px;border-radius:6px}
+.del:hover{color:var(--off);background:var(--off-soft)}
+@media (max-width:600px){
+  .row{grid-template-columns:54px 1fr auto;grid-template-areas:"time what what" "time pay act"}
+  .row.busy{grid-template-columns:54px 1fr;grid-template-areas:"time what" "time pay" "time act"}
+  .row.busy .act{justify-self:start}
+  .row .pay{justify-self:start}
+}
+.addrow{padding:8px 14px 12px;border-top:1px dashed var(--line)}
+.addlink{border:0;background:none;color:var(--accent);font-size:13px;font-weight:500;padding:4px 0}
+.addform{display:grid;grid-template-columns:110px 70px 1.4fr 1.2fr 90px auto;gap:8px;padding:10px 14px 14px;border-top:1px dashed var(--line);align-items:end}
+.addform label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+.field{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 8px;font-size:14px;width:100%;min-width:0}
+.field:focus{border-color:var(--accent);outline:none}
+.addform .btns{display:flex;gap:6px}
+.addform .full{grid-column:1/-1}
+@media (max-width:720px){.addform{grid-template-columns:1fr 1fr}.addform .wide,.addform .full,.addform .btns{grid-column:1/-1}}
+
+/* reconcile */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em;background:var(--surface-2)}
+th.r,td.r{text-align:right}
+td.src b{font-weight:500;display:block}
+td.src span{font-size:12px;color:var(--muted)}
+td .big{font-family:var(--num);font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+td .small{font-size:12px;color:var(--muted)}
+tfoot td{font-weight:700;background:var(--surface-2);border-bottom:0}
+.recv{width:110px;text-align:right;font-family:var(--num);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.recsec{margin-top:18px;display:flex;flex-direction:column;gap:12px;padding:14px 0 0;overflow:hidden}
+.recsec .rechead,.recsec .recstats{padding-inline:16px}
+.recsec table{border-top:1px solid var(--line)}
+.recsec tbody tr:last-child td{border-bottom:0}
+.recstats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.recstats>div{display:flex;flex-direction:column;gap:2px;align-items:flex-start}
+.recstats .lab{font-size:12px;color:var(--muted)}
+.recstats .big{font-family:var(--num);font-size:24px;font-weight:700;font-variant-numeric:tabular-nums}
+.recstats .small{font-size:12px;color:var(--muted)}
+@media (max-width:600px){.recstats{grid-template-columns:1fr 1fr}}
+.recsec table{table-layout:fixed}
+.recsec th:nth-child(1){width:34%}.recsec th:nth-child(2){width:12%}.recsec th:nth-child(3){width:17%}.recsec th:nth-child(4){width:19%}.recsec th:nth-child(5){width:18%}
+.recsec .recv{width:100%;max-width:120px}
+.rechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.rechead h2{margin:0;font-size:20px;font-weight:700}
+.rechead .hint{font-size:13px;color:var(--muted)}
+.rechead .recleft{margin-left:auto}
+.selrow{display:flex;flex-wrap:wrap;gap:4px 10px}
+.ratel{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);margin-top:4px}
+.ratein{width:90px;padding:2px 6px;font-size:13px;font-family:var(--num);font-variant-numeric:tabular-nums}
+.minsl{display:inline-flex;align-items:center;gap:2px;color:var(--muted);font-size:13px;margin-right:6px}
+.minsin{width:58px;text-align:right;border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:3px 6px;font-family:var(--num);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.minsin.changed{color:var(--accent);border-color:var(--accent)}
+.row .pay label{display:inline-flex;align-items:center;gap:2px}
+.modesel{display:flex;width:fit-content;align-items:center;gap:4px;font-size:11px;color:var(--muted);margin-top:4px}
+td.src>span{display:block}
+/* expanded rows stay within the visible width even when the table scrolls sideways */
+.ppform-row td>*,.ppdetail-row td>*{position:sticky;left:12px;width:min(100%, calc(100vw - 64px));box-sizing:border-box}
+.modesel select{padding:2px 4px;font-size:12px;width:auto;background:var(--surface)}
+.seg.paid[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.pctable th:nth-child(1){width:28%}.pctable th:nth-child(6){width:110px}
+.pclist{list-style:none;margin:0;padding:0;max-height:300px;overflow:auto}
+.pccheck{display:grid;grid-template-columns:22px 48px 1fr 80px 44px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px;cursor:pointer}
+.pccheck input{width:18px;height:18px;accent-color:var(--ok)}
+.pccheck .d,.pccheck .amt{font-family:var(--num);font-variant-numeric:tabular-nums}
+.pccheck .amt{text-align:right}
+.pccheck .st{font-size:12px;color:var(--muted)}
+.pccheck input:checked~.st{color:var(--ok);font-weight:600}
+.linkbtn{border:0;background:none;padding:2px 0;color:var(--accent);font-size:12px;font-weight:500;cursor:pointer;display:block}
+.btn.small{padding:4px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed;border-color:var(--line);color:var(--muted)}
+.btn.danger{background:var(--off);border-color:var(--off);color:#fff}
+.ppact{white-space:nowrap;text-align:right}
+.ppact .btn+.btn{margin-left:6px}
+.m-acts{display:none}
+@media (max-width:600px){
+  .recsec table.pptable,.recsec table.pctable{min-width:0;width:100%;table-layout:auto}
+  .recsec .pptable th,.recsec .pctable th{width:auto}
+  .pptable th:last-child,.pptable td.ppact,.pctable th:last-child,.pctable td.ppact{display:none}
+  .pctable th:nth-child(3),.pctable td:nth-child(3){display:none}
+  .pptable th,.pptable td,.pctable th,.pctable td{padding:10px 6px}
+  .pptable th:nth-child(1),.pctable th:nth-child(1){width:auto}
+  .pptable .big,.pctable .big{font-size:18px}
+  .m-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .pctable .chip,.pptable .chip{white-space:normal}
+  .ppform-row td>*,.ppdetail-row td>*{position:static;width:auto}
+}
+.big.neg{color:var(--off)}
+.pptable td .chip{margin-top:3px}
+.pptable th:nth-child(1){width:28%}.pptable th:nth-child(5){width:200px}
+.ppform-row td,.ppdetail-row td{background:var(--surface-2)}
+.ppform{display:grid;grid-template-columns:1.6fr 1.2fr .8fr 1fr auto;gap:8px;align-items:end}
+.ppform label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);min-width:0}
+.ppform .btns{display:flex;gap:6px}
+.ppform .ppnote{grid-column:1/-1;margin:0}
+.ppedit-title{grid-column:1/-1;margin:0;font-size:13px;font-weight:600;color:var(--accent)}
+.ppform.editing{outline:2px solid var(--accent);outline-offset:6px;border-radius:4px}
+.ppbtns{display:inline-flex;gap:4px;align-items:center;justify-self:end}
+@media (max-width:720px){.ppform{grid-template-columns:1fr 1fr}.ppform .btns{grid-column:1/-1}}
+.ppledger{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:280px;overflow:auto}
+.ppledger li{display:grid;grid-template-columns:48px 1fr 44px 60px auto;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ppledger .d,.ppledger .delta,.ppledger .bal{font-family:var(--num);font-variant-numeric:tabular-nums}
+.ppledger .delta{text-align:right;color:var(--ok);font-weight:600}.ppledger .delta.minus{color:var(--muted)}
+.ppledger .bal{text-align:right;color:var(--muted)}
+.ppledger .delconfirm{grid-column:1/-1;display:flex;gap:6px;align-items:center;font-size:13px;color:var(--off)}
+.ppfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.ppfoot .linkbtn{display:inline}
+.chip{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.bad{background:var(--off-soft);color:var(--off)}
+.chip.more{background:var(--accent-soft);color:var(--accent)}
+.chip.none{background:var(--surface-2);color:var(--muted)}
+.chip.wait{background:var(--wait-soft);color:var(--wait)}
+
+/* schedule */
+.sched td{padding:6px 6px}
+.sched .field{background:transparent;border-color:transparent}
+.sched .field:hover{border-color:var(--line)}
+.sched .field:focus{border-color:var(--accent);background:var(--surface)}
+.sched select.field{padding-right:2px}
+.sched .w-dow{width:64px}.sched .w-time{width:9.5em;min-width:150px}
+.sched [data-f="place"]{min-width:140px}
+.sched [data-f="kind"],.sched [data-f="content"]{min-width:200px}.sched .w-dur{width:72px}.sched .w-pay{width:92px}
+.sched tr.dowstart td{border-top:2px solid var(--line)}
+.note{font-size:13px;color:var(--muted);max-width:65ch}
+.weekstrip{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.weekstrip b{color:var(--ink);font-family:var(--num);font-size:16px;font-weight:600}
+.totop{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:18;display:flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:10px 16px 10px 12px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:500;box-shadow:0 6px 18px rgba(0,0,0,.22);opacity:0;transform:translateY(12px);pointer-events:none}
+.totop svg{width:18px;height:18px}
+.totop.show{opacity:1;transform:none;pointer-events:auto}
+@media (prefers-reduced-motion:no-preference){.totop{transition:opacity .2s,transform .2s}}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;z-index:20}
+@media (prefers-reduced-motion:no-preference){.row,.seg{transition:background .15s,border-color .15s,color .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">教練收入 · 開課記錄與月對帳</div>
+      <div class="monthnav">
+        <button class="iconbtn" id="prevMonth" aria-label="上個月">‹</button>
+        <h1 id="monthTitle" class="num">2026<small>年</small>9<small>月</small></h1>
+        <button class="iconbtn" id="nextMonth" aria-label="下個月">›</button>
+      </div>
+    </div>
+    <div class="backup">
+      <div class="savestate local" id="saveState"><i></i><span>資料存在這支手機</span></div>
+      <div class="btns">
+        <button class="btn primary" id="driveBtn" hidden>連線 Google 雲端硬碟</button>
+        <button class="btn" id="syncNowBtn" hidden title="確認資料都已經存到雲端硬碟">⟳ 立即同步</button>
+        <details class="more" id="moreMenu"><summary class="btn">備份選項</summary>
+          <div class="menu">
+            <button type="button" id="driveFolderBtn" hidden>打開雲端資料夾（每月備份）</button>
+            <button type="button" id="driveRestoreBtn" hidden>從雲端硬碟載回資料</button>
+            <button type="button" id="exportBtn">匯出備份檔</button>
+            <button type="button" id="importBtn">從備份檔還原</button>
+            <button type="button" id="driveOffBtn" class="danger" hidden>中斷雲端硬碟連線</button>
+          </div>
+        </details>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+  </header>
+
+  <div class="conflict card" id="syncConflict" hidden role="alert">
+    <div><b>雲端硬碟上有其他裝置更新的資料</b>（<span id="conflictWhen"></span>），這台也有還沒同步的修改。要用哪一份？</div>
+    <div class="btns"><button class="btn primary" id="useRemote">用雲端硬碟的</button><button class="btn" id="useLocal">用這台的（覆蓋雲端）</button></div>
+  </div>
+  <section class="summary" id="summary" aria-label="本月摘要"></section>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-log" aria-selected="true" data-tab="log">逐日記錄</button>
+    <button class="tab" role="tab" id="tab-rec" aria-selected="false" data-tab="rec">對帳</button>
+    <button class="tab" role="tab" id="tab-self" aria-selected="false" data-tab="self">自營團課</button>
+    <button class="tab" role="tab" id="tab-sch" aria-selected="false" data-tab="sch">每週課表</button>
+  </nav>
+
+  <main id="view"></main>
+</div>
+<button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ===== 設定 =====
+   GOOGLE_CLIENT_ID：貼上 Google Cloud 建立的「OAuth 用戶端 ID」（結尾是 .apps.googleusercontent.com）。
+   留空的話，雲端硬碟自動同步會關閉，只保留手動備份。 */
+const GOOGLE_CLIENT_ID = '134950862123-dd1je5jd0gtocq6vcgjqbgg1qini4r7s.apps.googleusercontent.com';
+</script>
+<script>
+(() => {
+const DOW = ['日','一','二','三','四','五','六'];
+// No data is built into this page: the weekly schedule, students and records all come from the stored data
+// (Google Drive sync file or an imported backup .json).
+const DEFAULT_SCHEDULE = [];
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => Math.round(n||0).toLocaleString('en-US');
+const pad = n => String(n).padStart(2,'0');
+const ymd = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+// Private clients sharing one place (e.g. 私教課 - 王小姐) are paid separately, so they reconcile separately
+const clientOf = content => { const m = String(content||'').split(/\s*-\s*/); return m.length>1 ? m.slice(1).join(' - ').trim() : ''; };
+const srcKey = (place,kind,content) => { const c = clientOf(content); return (place||'').trim()+'｜'+(kind||'').trim()+(c?'｜'+c:''); };
+const SCHEDULE_VERSION = 7;   // bump when the built-in weekly schedule changes
+const START_MONTH = '2026-09'; // first month the ledger covers
+const clone = o => JSON.parse(JSON.stringify(o));
+const emptyMonth = () => ({entries:{}, extras:[], received:{}});
+
+const now = new Date();
+const TODAY = ymd(now);
+let monthKey = now.getFullYear()+'-'+pad(now.getMonth()+1);
+if(monthKey < START_MONTH) monthKey = START_MONTH;
+let schedule = clone(DEFAULT_SCHEDULE);
+let month = emptyMonth();
+let tab = 'log';
+let addOpenFor = null;
+let confirmBulk = false;
+
+/* ---------- storage: this browser ---------- */
+const LS = 'coach-ledger:';
+let storageOK = true;
+function lsGet(p){ try{ const v = localStorage.getItem(LS+p); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+function lsSet(p,v){ try{ localStorage.setItem(LS+p, JSON.stringify(v)); storageOK = true; }catch(e){ storageOK = false; } }
+function lsDel(p){ try{ localStorage.removeItem(LS+p); }catch(e){} }
+function setSave(kind, text){ const el=$('#saveState'); el.className='savestate '+kind; el.querySelector('span').textContent=text; }
+function daysSince(iso){ return Math.floor((Date.now()-new Date(iso).getTime())/86400000); }
+function whenText(iso){
+  const d = new Date(iso);
+  return ymd(d)===ymd(new Date()) ? '今天 '+pad(d.getHours())+':'+pad(d.getMinutes()) : (d.getMonth()+1)+'/'+d.getDate();
+}
+
+/* ---------- Google Drive sync ---------- */
+const DRIVE_ON = !!GOOGLE_CLIENT_ID;
+const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILE = '教練收入對帳-自動同步.json';
+const DRIVE_FOLDER = '教練收入對帳';   // the sync file and the monthly backups live in this folder
+const dm = lsGet('meta/drive') || {};
+const drive = {connected:!!dm.connected, fileId:dm.fileId||null, folderId:dm.folderId||null, inFolder:!!dm.inFolder, lastSync:dm.lastSync||null,
+  token:null, exp:0, client:null, dirty:!!dm.dirty, syncing:false, again:false, offline:false, authFail:false,
+  lastAutoAsk:0, afterAuth:null, timer:null,
+  known:dm.known||null,      // Drive file modifiedTime this device last synced with
+  needCheck:false, conflict:null, forcePush:false, checking:false, lastCheck:0};
+const tk = lsGet('meta/token');
+if(tk && tk.exp > Date.now()){ drive.token = tk.t; drive.exp = tk.exp; }
+const tokenValid = () => !!drive.token && Date.now() < drive.exp;
+function saveDriveMeta(){ lsSet('meta/drive', {connected:drive.connected, fileId:drive.fileId, folderId:drive.folderId, inFolder:drive.inFolder, lastSync:drive.lastSync, dirty:drive.dirty, known:drive.known}); }
+// JSON with object keys sorted, so two copies of the same data compare equal
+const stable = v => JSON.stringify(v, (k,x)=> x && typeof x==='object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map(key=>[key,x[key]])) : x);
+
+function refreshSaveState(){
+  const btn = $('#driveBtn');
+  if(DRIVE_ON){
+    $('#driveRestoreBtn').hidden = !drive.connected;
+    $('#driveFolderBtn').hidden = !drive.connected || !drive.folderId;
+    const sb = $('#syncNowBtn'); sb.hidden = !drive.connected; sb.disabled = !!drive.manualRunning; sb.textContent = drive.manualRunning ? '同步中…' : '⟳ 立即同步';
+    $('#driveOffBtn').hidden = !drive.connected;
+  }
+  if(!storageOK){ setSave('err','這個瀏覽器不能存資料（可能是無痕模式），關掉就會消失'); return; }
+  if(!DRIVE_ON){
+    btn.hidden = true;
+    const meta = lsGet('meta/backup');
+    if(!meta || !meta.at){ setSave('warn','已存在這支手機 · 還沒備份過'); return; }
+    const d = daysSince(meta.at);
+    if(d>=30) setSave('warn',`已存在這支手機 · 上次備份 ${d} 天前`);
+    else setSave('ok',`已存在這支手機 · 上次備份 ${d===0?'今天':d+' 天前'}`);
+    return;
+  }
+  if(!drive.connected){
+    btn.hidden = false; btn.textContent = '連線 Google 雲端硬碟';
+    setSave('warn','只存在這支手機 · 還沒連線雲端硬碟'); return;
+  }
+  const needAuth = (drive.dirty || drive.needCheck) && !tokenValid();
+  const hasErr = drive.dirty && !!drive.error && !needAuth && !drive.syncing;
+  btn.hidden = !(needAuth || hasErr); btn.textContent = hasErr ? '重試同步' : '重新連線雲端硬碟';
+  if(drive.syncing) setSave('busy','同步到雲端硬碟中…');
+  else if(hasErr) setSave('err', drive.error+' · 資料仍安全存在這台裝置');
+  else if(drive.dirty && drive.offline) setSave('warn','沒有網路 · 有網路後會自動同步');
+  else if(needAuth) setSave('warn', drive.dirty ? '有變更還沒存到雲端硬碟 · 請按「重新連線」' : '請按「重新連線」取得其他裝置的最新資料');
+  else if(drive.conflict) setSave('warn','雲端硬碟和這台的資料不同 · 請選擇要用哪一份');
+  else if(drive.checking) setSave('busy','檢查雲端硬碟有沒有更新…');
+  else if(drive.dirty) setSave('busy','準備同步…');
+  else if(drive.lastSync) setSave('ok','已同步到雲端硬碟 · '+whenText(drive.lastSync));
+  else setSave('ok','已連線雲端硬碟');
+}
+
+function payload(){ return {app:'coach-ledger', version:1, exportedAt:new Date().toISOString(), data:allData()}; }
+async function gfetch(url, opts={}){
+  let r;
+  try{ r = await fetch(url, {...opts, headers:{...(opts.headers||{}), Authorization:'Bearer '+drive.token}}); }
+  catch(e){ throw {offline:true}; }
+  if(r.status===401){ drive.token=null; lsDel('meta/token'); throw {auth:true}; }
+  return r;
+}
+// Turn a failed Drive response into a readable reason
+async function apiErr(r){
+  let msg = '', reason = '';
+  try{ const j = await r.json(); msg = (j.error && j.error.message) || ''; reason = (j.error && ((j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || j.error.status)) || ''; }catch(e){}
+  const all = reason+' '+msg;
+  if(/accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled/i.test(all))
+    return {status:r.status, text:'這個 Google Cloud 專案還沒啟用 Google Drive API'};
+  if(/insufficient|scope/i.test(all)){ drive.token=null; lsDel('meta/token'); return {auth:true}; }
+  if(r.status===429 || /rateLimit|userRateLimit/i.test(all)) return {status:r.status, text:'雲端硬碟暫時太忙，稍後自動重試', retry:true};
+  if(r.status>=500) return {status:r.status, text:'雲端硬碟暫時沒回應，稍後自動重試', retry:true};
+  return {status:r.status, text:`雲端硬碟回傳錯誤 ${r.status}${msg?'：'+msg:''}`};
+}
+// The 教練收入對帳 folder (found or created once, then remembered)
+async function ensureFolder(){
+  if(drive.folderId){
+    const r = await gfetch(`https://www.googleapis.com/drive/v3/files/${drive.folderId}?fields=id,trashed`);
+    if(r.ok){ const j = await r.json(); if(!j.trashed) return drive.folderId; }
+    else if(r.status!==404) throw await apiErr(r);
+    drive.folderId = null; drive.inFolder = false;
+  }
+  const q = encodeURIComponent(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=createdTime&pageSize=1&fields=files(id)&spaces=drive`);
+  if(!r.ok) throw await apiErr(r);
+  const j = await r.json();
+  if(j.files && j.files[0]){ drive.folderId = j.files[0].id; saveDriveMeta(); return drive.folderId; }
+  const c = await gfetch('https://www.googleapis.com/drive/v3/files?fields=id', {method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name:DRIVE_FOLDER, mimeType:'application/vnd.google-apps.folder', description:'教練月收入對帳：自動同步檔和每月備份'})});
+  if(!c.ok) throw await apiErr(c);
+  drive.folderId = (await c.json()).id; drive.inFolder = false; saveDriveMeta();
+  return drive.folderId;
+}
+// Older versions put the sync file at the top of Drive: move it into the folder once
+async function moveIntoFolder(){
+  if(drive.inFolder || !drive.fileId) return;
+  const folder = await ensureFolder();
+  const r = await gfetch(`https://www.googleapis.com/drive/v3/files/${drive.fileId}?fields=parents`);
+  if(!r.ok) throw await apiErr(r);
+  const parents = (await r.json()).parents || [];
+  if(!parents.includes(folder)){
+    const m = await gfetch(`https://www.googleapis.com/drive/v3/files/${drive.fileId}?addParents=${folder}${parents.length?`&removeParents=${parents.join(',')}`:''}&fields=id,modifiedTime`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:'{}'});
+    if(!m.ok) throw await apiErr(m);
+  }
+  drive.inFolder = true; saveDriveMeta();
+}
+// 每月自動備份: the first time the page syncs in a new month, save a copy named by the date (e.g. 2026-10-01.json)
+let monthlyRunning = false;
+async function monthlyBackup(){
+  if(monthlyRunning || !drive.connected || !tokenValid() || drive.conflict || drive.dirty) return;
+  const mk = TODAY.slice(0,7), m = lsGet('meta/monthly') || {};
+  if(!m.from){ m.from = mk; lsSet('meta/monthly', m); }   // starts the month after it is turned on
+  if(mk <= m.from || m.done === mk || !hasRecords(allData())) return;
+  monthlyRunning = true;
+  try{
+    const folder = await ensureFolder();
+    const q = encodeURIComponent(`'${folder}' in parents and name contains '${mk}-' and trashed=false`);
+    const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=5&fields=files(id,name)&spaces=drive`);
+    if(!r.ok) throw await apiErr(r);
+    const found = ((await r.json()).files || []).some(f=>/^\d{4}-\d{2}-\d{2}\.json$/.test(f.name) && f.name.startsWith(mk+'-'));
+    if(!found){   // another device may already have made this month's backup
+      const boundary = 'coachbackup'+Date.now();
+      const meta = {name:TODAY+'.json', parents:[folder], mimeType:'application/json', description:`教練月收入對帳 ${TODAY} 的自動備份，可以用「從備份檔還原」匯入。`};
+      const mp = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(payload(),null,1)}\r\n--${boundary}--`;
+      const c = await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body:mp});
+      if(!c.ok) throw await apiErr(c);
+      toast(`已自動備份到雲端硬碟：${DRIVE_FOLDER}/${TODAY}.json`);
+    }
+    m.done = mk; lsSet('meta/monthly', m);
+  }catch(e){ /* try again next time the page syncs */ }
+  monthlyRunning = false;
+}
+async function findFileMeta(){
+  const q = encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`);
+  const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=modifiedTime%20desc&pageSize=1&fields=files(id,modifiedTime)&spaces=drive`);
+  if(!r.ok) throw await apiErr(r);
+  const j = await r.json();
+  return j.files && j.files[0] ? j.files[0] : null;
+}
+async function findFile(){ const f = await findFileMeta(); return f ? f.id : null; }
+// {id, modifiedTime} of the sync file, or null when there is none yet
+async function getRemoteMeta(){
+  if(drive.fileId){
+    const r = await gfetch(`https://www.googleapis.com/drive/v3/files/${drive.fileId}?fields=id,modifiedTime,trashed`);
+    if(r.ok){ const j = await r.json(); if(!j.trashed) return j; }
+    else if(r.status!==404) throw await apiErr(r);
+    drive.fileId = null;
+  }
+  const f = await findFileMeta();
+  if(f) drive.fileId = f.id;
+  return f;
+}
+async function readRemote(){
+  if(!drive.fileId) drive.fileId = await findFile();
+  if(!drive.fileId) return null;
+  const r = await gfetch(`https://www.googleapis.com/drive/v3/files/${drive.fileId}?alt=media`);
+  if(r.status===404){ drive.fileId=null; return null; }
+  if(!r.ok) throw await apiErr(r);
+  return r.json();
+}
+async function writeRemote(body){
+  if(drive.fileId){
+    const r = await gfetch(`https://www.googleapis.com/upload/drive/v3/files/${drive.fileId}?uploadType=media&fields=id,modifiedTime`,
+      {method:'PATCH', headers:{'Content-Type':'application/json'}, body});
+    if(r.ok) return (await r.json()).modifiedTime;
+    if(r.status!==404) throw await apiErr(r);
+    drive.fileId = null;
+  }
+  const boundary = 'coachledger'+Date.now();
+  const folder = await ensureFolder();
+  const meta = {name:DRIVE_FILE, parents:[folder], mimeType:'application/json', description:'教練月收入對帳的自動同步資料，請不要改名或刪除。'};
+  const mp = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${body}\r\n--${boundary}--`;
+  const r = await gfetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,modifiedTime',
+    {method:'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body:mp});
+  if(!r.ok) throw await apiErr(r);
+  const j = await r.json();
+  drive.fileId = j.id; drive.inFolder = true;
+  return j.modifiedTime;
+}
+// Replace this device's data with what is on Drive
+function pullRemote(remote, meta){
+  clearTimeout(drive.timer);
+  applyData(remote.data);
+  clearTimeout(drive.timer);
+  drive.dirty = false; drive.again = false; drive.known = meta ? meta.modifiedTime : drive.known;
+  drive.lastSync = new Date().toISOString(); drive.offline = false; drive.error = null;
+  saveDriveMeta();
+}
+// Two-way sync: bring in another device's newer data, or ask when both sides changed
+async function syncCheck(){
+  if(!DRIVE_ON || !drive.connected) return;
+  if(!tokenValid()){ drive.needCheck = true; refreshSaveState(); return; }
+  if(drive.checking || drive.syncing) return;
+  drive.checking = true; drive.needCheck = false; drive.lastCheck = Date.now(); refreshSaveState();
+  try{
+    let meta = await getRemoteMeta();
+    if(meta && !drive.inFolder){ const was = drive.known===meta.modifiedTime; await moveIntoFolder(); meta = await getRemoteMeta(); if(was && meta) drive.known = meta.modifiedTime; }   // moving is not a data change
+    if(!meta && hasRecords(allData())) drive.dirty = true;                                  // nothing on Drive yet: upload this device's data
+    if(meta && meta.modifiedTime !== drive.known){
+      const remote = await readRemote();
+      if(remote && remote.app==='coach-ledger'){
+        if(stable(remote.data)===stable(allData())) drive.known = meta.modifiedTime;          // same content
+        else if(!drive.dirty){ pullRemote(remote, meta); toast('已載入其他裝置的最新資料'); }   // nothing unsaved here
+        else drive.conflict = {remote, meta};                                                  // both changed
+      }
+    }
+    drive.offline = false;
+  }catch(e){ if(e && e.offline) drive.offline = true; else if(e && e.auth) drive.needCheck = true; else if(e) drive.error = e.text; }
+  drive.checking = false; saveDriveMeta(); refreshSaveState(); renderConflict();
+  if(!drive.conflict && drive.dirty) pushNow(); else monthlyBackup();
+}
+// 立即同步: bring in other devices' changes, upload this device's data, then read it back and compare
+const waitIdle = async (ms=15000) => { const t0 = Date.now(); while((drive.syncing || drive.checking) && Date.now()-t0 < ms) await new Promise(r=>setTimeout(r,150)); };
+async function manualSync(){
+  if(!DRIVE_ON) return;
+  if(!drive.connected){ askAuth(null, false); return; }
+  if(!tokenValid()){ drive.lastAutoAsk = Date.now(); askAuth('sync', true); return; }
+  if(drive.manualRunning) return;
+  drive.manualRunning = true; refreshSaveState();
+  try{
+    await waitIdle();
+    drive.lastCheck = 0; await syncCheck(); await waitIdle();
+    if(drive.conflict){ toast('雲端硬碟和這台都有修改，請先在上方選擇要用哪一份，再按一次立即同步'); return; }
+    if(drive.error || drive.offline){ toast(drive.offline ? '沒有網路，資料還在這台，有網路後再按一次' : '同步失敗：'+drive.error); return; }
+    drive.dirty = true; await pushNow(); await waitIdle();
+    if(drive.conflict){ toast('雲端硬碟上剛好有其他裝置的更新，請先在上方選擇要用哪一份'); return; }
+    if(drive.dirty || drive.error || drive.offline || !tokenValid()){ toast(drive.offline ? '沒有網路，資料還在這台，有網路後再按一次' : '沒有傳上去，請再按一次立即同步'); return; }
+    const remote = await readRemote();
+    if(remote && remote.app==='coach-ledger' && stable(remote.data)===stable(allData())){
+      drive.lastSync = new Date().toISOString(); saveDriveMeta();
+      toast('已確認：這台的資料都在雲端硬碟 · '+whenText(drive.lastSync));
+    } else toast('比對結果不一致，請再按一次立即同步');
+  }catch(e){ driveErr(e); toast(e && e.offline ? '沒有網路，資料還在這台，有網路後再按一次' : '同步失敗，請再按一次'); }
+  finally{ drive.manualRunning = false; refreshSaveState(); }
+}
+function renderConflict(){
+  const el = $('#syncConflict'); if(!el) return;
+  if(!drive.conflict){ el.hidden = true; return; }
+  const t = drive.conflict.meta && drive.conflict.meta.modifiedTime;
+  $('#conflictWhen').textContent = t ? whenText(t) : '';
+  el.hidden = false;
+}
+function driveErr(e){
+  drive.dirty = true;
+  drive.offline = !!(e && e.offline);
+  drive.error = (e && !e.offline && !e.auth) ? (e.text || '同步失敗') : null;
+  clearTimeout(drive.retryTimer);
+  if(drive.error){ drive.retryTimer = setTimeout(pushNow, e.retry ? 20000 : 60000); }
+}
+async function pushNow(){
+  clearTimeout(drive.timer);
+  if(!DRIVE_ON || !drive.connected) return;
+  if(!tokenValid()){ drive.dirty = true; saveDriveMeta(); refreshSaveState(); return; }
+  if(drive.syncing){ drive.again = true; return; }
+  drive.syncing = true; drive.dirty = false; refreshSaveState();
+  try{
+    if(!drive.forcePush){
+      const meta = await getRemoteMeta();
+      if(meta && meta.modifiedTime !== drive.known){
+        const remote = await readRemote();
+        if(remote && remote.app==='coach-ledger' && stable(remote.data)!==stable(allData())){
+          drive.syncing = false; drive.again = false;
+          if(!hasRecords(allData())){ pullRemote(remote, meta); refreshSaveState(); toast('已從雲端硬碟載入之前的記錄'); return; }   // a new device
+          drive.dirty = true; drive.conflict = {remote, meta};
+          saveDriveMeta(); refreshSaveState(); renderConflict(); return;
+        }
+      }
+    }
+    drive.forcePush = false;
+    drive.known = await writeRemote(JSON.stringify(payload())) || drive.known;
+    drive.lastSync = new Date().toISOString(); drive.offline = false; drive.error = null;
+    lsSet('meta/backup', {at:drive.lastSync});
+  }catch(e){ driveErr(e); }
+  drive.syncing = false; saveDriveMeta(); refreshSaveState();
+  if(drive.again){ drive.again = false; pushNow(); } else monthlyBackup();
+}
+function scheduleSync(){
+  if(!DRIVE_ON || !drive.connected) return;
+  drive.dirty = true; saveDriveMeta();
+  clearTimeout(drive.timer); drive.timer = setTimeout(pushNow, 1500);
+}
+function hasRecords(data){ return Object.keys(data||{}).some(k=>k.startsWith('months/')); }
+
+function initGoogle(){
+  if(!DRIVE_ON) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+  s.onload = () => {
+    drive.client = google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID, scope: SCOPE, 
+      callback: resp => {
+        if(resp.error){ authFailed(); return; }
+        if(!google.accounts.oauth2.hasGrantedAllScopes(resp, SCOPE)){ toast('要勾選允許存取雲端硬碟，才能同步'); authFailed(); return; }
+        drive.token = resp.access_token;
+        drive.exp = Date.now() + (Number(resp.expires_in||3600) - 120) * 1000;
+        lsSet('meta/token', {t:drive.token, exp:drive.exp});
+        const next = drive.afterAuth; drive.afterAuth = null;
+        onAuthorized(next);
+      },
+      error_callback: () => authFailed()
+    });
+  };
+  s.onerror = () => { drive.offline = true; refreshSaveState(); };
+  document.head.appendChild(s);
+}
+function authFailed(){ drive.afterAuth = null; refreshSaveState(); }
+function askAuth(next, silent){
+  if(!drive.client){ toast('Google 登入還在載入，請過幾秒再按一次'); return; }
+  drive.afterAuth = next || null;
+  drive.client.requestAccessToken(silent && drive.connected ? {prompt:''} : {});
+}
+async function onAuthorized(next){
+  const first = !drive.connected;
+  drive.connected = true; saveDriveMeta();
+  if(next==='restore'){ restoreFromDrive(); return; }
+  if(next==='sync'){ manualSync(); return; }
+  if(first) toast('已連線，之後每次修改都會自動存到雲端硬碟');
+  syncCheck();
+}
+async function restoreFromDrive(){
+  if(!tokenValid()){ askAuth('restore'); return; }
+  try{
+    setSave('busy','讀取雲端硬碟…');
+    const remote = await readRemote();
+    if(!remote || remote.app!=='coach-ledger'){ toast('雲端硬碟裡還沒有同步檔'); refreshSaveState(); return; }
+    const months = Object.keys(remote.data).filter(k=>k.startsWith('months/')).length;
+    if(!window.confirm(`用雲端硬碟上的資料（${String(remote.exportedAt||'').slice(0,16).replace('T',' ')}，${months} 個月的記錄）取代這支手機上的資料？`)){ refreshSaveState(); return; }
+    let meta = null; try{ meta = await getRemoteMeta(); }catch(e){}
+    pullRemote(remote, meta); drive.conflict = null; renderConflict();
+    refreshSaveState(); toast('已從雲端硬碟載回資料');
+  }catch(e){ driveErr(e); refreshSaveState(); }
+}
+function disconnectDrive(){
+  if(!window.confirm('中斷後，修改只會存在這支手機，不再自動同步。雲端硬碟上的檔案會保留。確定中斷？')) return;
+  try{ if(drive.token && window.google) google.accounts.oauth2.revoke(drive.token, ()=>{}); }catch(e){}
+  drive.connected=false; drive.token=null; drive.fileId=null; drive.folderId=null; drive.inFolder=false; drive.dirty=false; drive.lastSync=null; drive.known=null; drive.conflict=null; renderConflict();
+  lsDel('meta/token'); saveDriveMeta(); refreshSaveState(); toast('已中斷雲端硬碟連線');
+}
+
+function queue(path, data){ lsSet(path, data); scheduleSync(); refreshSaveState(); }
+const monthPath = () => 'months/'+monthKey;
+const saveMonth = () => queue(monthPath(), month);
+const saveSchedule = () => queue('config/schedule', {classes: schedule, v: SCHEDULE_VERSION});
+function watchMonth(){ month = normMonth(lsGet(monthPath()) || emptyMonth()); render(); }
+
+/* ---------- manual backup file ---------- */
+function allData(){
+  const data = {};
+  try{
+    for(let i=0;i<localStorage.length;i++){
+      const k = localStorage.key(i);
+      if(k && k.startsWith(LS) && !k.startsWith(LS+'meta/')){ data[k.slice(LS.length)] = JSON.parse(localStorage.getItem(k)); }
+    }
+  }catch(e){}
+  if(!data['config/schedule']) data['config/schedule'] = {classes: schedule, v: SCHEDULE_VERSION};
+  return data;
+}
+function applyData(data){
+  try{
+    Object.keys(localStorage).filter(k=>k.startsWith(LS) && !k.startsWith(LS+'meta/')).forEach(k=>localStorage.removeItem(k));
+    Object.entries(data).forEach(([k,v])=>{ if(!k.startsWith('meta/')) localStorage.setItem(LS+k, JSON.stringify(v)); });
+  }catch(e){ toast('還原失敗：這個瀏覽器不能存資料'); return false; }
+  upgradeStored();   // an older backup is converted to the current numbering right away
+  loadPrepaid();
+  loadSelfrun();
+  watchMonth();
+  return true;
+}
+function exportBackup(){
+  const p = payload();
+  const name = `教練收入備份-${ymd(new Date())}.json`;
+  const text = JSON.stringify(p,null,1);
+  const markDone = msg => { if(!drive.connected){ lsSet('meta/backup', {at:new Date().toISOString()}); } refreshSaveState(); toast(msg); };
+  const download = () => {
+    const blob = new Blob([text], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
+    markDone('備份檔已下載');
+  };
+  let file = null;
+  try{ file = new File([text], name, {type:'application/json'}); }catch(e){}
+  if(file && navigator.canShare && navigator.share && navigator.canShare({files:[file]})){
+    navigator.share({files:[file], title:name})
+      .then(()=>markDone('已送出備份檔'))
+      .catch(err=>{ if(err && err.name==='AbortError') toast('已取消'); else download(); });
+  } else download();
+}
+function importBackup(file){
+  const r = new FileReader();
+  r.onload = () => {
+    let p;
+    try{ p = JSON.parse(r.result); }catch(e){ toast('這不是備份檔，無法讀取'); return; }
+    if(!p || p.app!=='coach-ledger' || !p.data){ toast('這不是本頁匯出的備份檔'); return; }
+    const months = Object.keys(p.data).filter(k=>k.startsWith('months/')).length;
+    if(!window.confirm(`用 ${String(p.exportedAt||'').slice(0,10)} 的備份（${months} 個月的記錄）取代目前手機上的資料？`)) return;
+    if(!applyData(p.data)) return;
+    if(!drive.connected) lsSet('meta/backup', {at: p.exportedAt || new Date().toISOString()});
+    scheduleSync(); refreshSaveState(); toast('已還原備份');
+  };
+  r.readAsText(file);
+}
+function normMonth(m){ m.entries=m.entries||{}; m.extras=m.extras||[]; m.received=m.received||{}; m.paid=m.paid||{}; m.att=m.att||{}; return m; }
+
+/* ---------- model ---------- */
+const snapOf = it => ({time:it.time, dur:it.dur, place:it.place, kind:it.kind, content:it.content, pay:it.base});
+const classOn = (c, ds) => (!c.from || ds >= c.from) && (!c.until || ds <= c.until);
+function daysOfMonth(mk = monthKey, mo = month){
+  const [y,m] = mk.split('-').map(Number);
+  const n = new Date(y, m, 0).getDate();
+  const out = [];
+  for(let d=1; d<=n; d++){
+    const date = new Date(y, m-1, d);
+    const ds = ymd(date), dow = date.getDay();
+    const items = [];
+    const seen = new Set();
+    schedule.filter(c=>classOn(c, ds) && (typeof selfrun!=='undefined' && isSR(c.id) ? !!termOf(ds) : c.dow===dow)).forEach(c=>{   // 自營團課 only on its term dates
+      const key = ds+'_'+c.id; seen.add(key);
+      const e = mo.entries[key] || {};
+      const src = e.snap || c;   // a recorded class keeps the details it had at the time
+      items.push({key, date:ds, time:src.time, dur:src.dur, place:src.place, kind:src.kind, content:src.content,
+        base:src.pay, pay: e.pay ?? src.pay, mins: e.mins ?? src.dur, override: e.pay, status: e.s || 'held', extra:false});
+    });
+    // records whose class is no longer on the weekly schedule for that day
+    Object.entries(mo.entries).forEach(([key,e])=>{
+      if(!key.startsWith(ds+'_') || seen.has(key) || !e.snap) return;
+      if(typeof selfrun!=='undefined' && isSR(key.slice(11)) && !termOf(ds)) return;   // not a term date (any more)
+      const sn = e.snap;
+      items.push({key, date:ds, time:sn.time, dur:sn.dur, place:sn.place, kind:sn.kind, content:sn.content,
+        base:sn.pay, pay:e.pay ?? sn.pay, mins: e.mins ?? sn.dur, override: e.pay, status:e.s||'held', extra:false, orphan:true});
+    });
+    mo.extras.filter(x=>x.date===ds).forEach(x=>{
+      items.push({key:x.id, date:ds, time:x.time, dur:x.dur, place:x.place, kind:x.kind, content:x.content,
+        base:x.pay, pay:x.pay, mins: x.mins ?? x.dur, status:x.s||'held', extra:true});
+    });
+    // 自營團課: the session's amount = 期課學費分攤 + 單堂 − 場地費
+    items.forEach(it=>{
+      if(it.extra || typeof selfrun==='undefined') return;
+      const cid = it.key.slice(11); if(!isSR(cid)) return;
+      const ss = srSession(ds, cid, mo); if(!ss) return;
+      it.sr = ss; it.selfrun = cid; it.base = ss.value; it.pay = it.override ?? it.base;
+    });
+    // 按時間 students: the amount follows the minutes actually taught (hourly rate × hours)
+    items.forEach(it=>{
+      if(!isPrivate(it.content) || typeof prepaid==='undefined') return;
+      const n = privName(it.content); if(!isTimeBased(n)) return;
+      const base = Math.round(hourlyRateOf(n) * (it.mins||0) / 60);
+      if(it.extra){ it.base = base; }                       // extra: x.pay already set from minutes
+      else { it.base = base; it.pay = it.override ?? base; }
+    });
+    items.sort((a,b)=>a.time.localeCompare(b.time));
+    out.push({ds, d, dow, items});
+  }
+  return out;
+}
+// Before a weekly class changes, pin its past days to the old details so past months don't shift
+function freezePast(classId){
+  const [ty,tm] = TODAY.split('-').map(Number);
+  let [y,m] = START_MONTH.split('-').map(Number);
+  while(y<ty || (y===ty && m<=tm)){
+    const mk = y+'-'+pad(m);
+    const mo = mk===monthKey ? month : normMonth(lsGet('months/'+mk) || emptyMonth());
+    let changed = false;
+    daysOfMonth(mk, mo).forEach(day=>{
+      if(day.ds >= TODAY) return;
+      day.items.forEach(it=>{
+        if(it.extra || !it.key.endsWith('_'+classId)) return;
+        const e = mo.entries[it.key] || {};
+        if(!e.snap){ mo.entries[it.key] = {...e, snap:snapOf(it)}; changed = true; }
+      });
+    });
+    if(changed) queue('months/'+mk, mo);
+    m++; if(m>12){ m=1; y++; }
+  }
+}
+function totals(days){
+  const t = {held:0, heldN:0, wait:0, waitN:0, off:0, offN:0, all:0, n:0};
+  days.forEach(day=>day.items.forEach(it=>{
+    t.n++; t.all += it.pay;
+    if(it.status==='held'){ t.held+=it.pay; t.heldN++; }
+    else if(it.status==='off'){ t.off+=it.pay; t.offN++; }
+    else { t.wait+=it.pay; t.waitN++; }
+  }));
+  return t;
+}
+function findItem(key){
+  for(const day of daysOfMonth()) for(const it of day.items) if(it.key===key) return it;
+  return null;
+}
+function setStatus(key, s){   // s: 'held' | 'off'
+  const x = month.extras.find(x=>x.id===key);
+  if(x){ x.s = s; saveMonth(); render(); return; }
+  const it = findItem(key); if(!it) return;
+  const e = {...(month.entries[key]||{})};
+  e.snap = e.snap || snapOf(it);
+  if(s==='off') e.s = 'off'; else delete e.s;
+  month.entries[key] = e;
+  saveMonth(); render();
+}
+function setPay(key, val){
+  const v = Math.max(0, Math.round(Number(val)||0));
+  const x = month.extras.find(x=>x.id===key);
+  if(x){ x.pay = v; saveMonth(); render(); return; }
+  const it = findItem(key); if(!it) return;
+  const e = {...(month.entries[key]||{})};
+  e.snap = e.snap || snapOf(it);
+  if(v===it.base) delete e.pay; else e.pay = v;
+  month.entries[key] = e;
+  saveMonth(); render();
+}
+
+// 按時間 students: record how long the class actually ran; the amount follows (hourly rate × hours)
+function setMins(key, val){
+  const v = Math.max(0, Math.round(Number(val)||0));
+  const x = month.extras.find(x=>x.id===key);
+  if(x){ x.mins = v; x.pay = Math.round(hourlyRateOf(privName(x.content)) * v / 60); saveMonth(); render(); return; }
+  const it = findItem(key); if(!it) return;
+  const e = {...(month.entries[key]||{})};
+  e.snap = e.snap || snapOf(it);
+  if(v===it.dur) delete e.mins; else e.mins = v;
+  delete e.pay;
+  month.entries[key] = e;
+  saveMonth(); render();
+}
+
+/* ---------- render ---------- */
+function render(){
+  const [y,m] = monthKey.split('-').map(Number);
+  $('#monthTitle').innerHTML = `${y}<small>年</small>${m}<small>月</small>`;
+  $('#prevMonth').disabled = monthKey <= START_MONTH;
+  const days = daysOfMonth();
+  const t = totals(days);
+  const pct = v => t.all ? (v/t.all*100).toFixed(1)+'%' : '0';
+  const soFar = days.filter(d=>d.ds<=TODAY).reduce((sum,d)=>sum+d.items.filter(i=>i.status==='held').reduce((a,i)=>a+i.pay,0),0);
+  const isPastMonth = monthKey < TODAY.slice(0,7), isFuture = monthKey > TODAY.slice(0,7);
+  $('#summary').innerHTML = `
+    <div class="stat main"><span class="lab">本月上課總額（已扣停課）</span><span class="val num"><span class="cur">NT$</span>${money(t.held)}</span><span class="sub">${t.heldN} 堂有開</span>
+      <div class="progress" title="有開 / 停課"><b style="width:${pct(t.held)};background:var(--ok)"></b><b style="width:${pct(t.off)};background:var(--off)"></b></div></div>
+    <div class="stat off"><span class="lab">停課 · 沒收入</span><span class="val num">${t.offN}<span class="cur" style="margin-left:4px">堂</span></span><span class="sub num">少收 NT$ ${money(t.off)}</span></div>
+    <div class="stat"><span class="lab">${isPastMonth?'整月已上完':'到今天為止已上'}</span><span class="val num"><span class="cur">NT$</span>${money(isFuture?0:soFar)}</span><span class="sub">${isPastMonth?'這個月已結束':isFuture?'還沒開始':'含今天'}</span></div>
+    <div class="stat"><span class="lab">課表全開的話</span><span class="val num"><span class="cur">NT$</span>${money(t.all)}</span><span class="sub">本月共 ${t.n} 堂</span></div>`;
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
+  const focusId = document.activeElement && document.activeElement.id;
+  if(tab==='log') renderLog(days);
+  else if(tab==='rec') renderRec(days);
+  else if(tab==='self') renderSelf();
+  else renderSched();
+  if(focusId){ const f=document.getElementById(focusId); if(f && f!==document.activeElement) f.focus(); }
+}
+
+// Distinct classes (weekly schedule + extra classes this month) offered as templates for a new class
+function pickOptions(){
+  const seen = new Set(), out = [];
+  const add = (c, prefix) => {
+    const k = [c.content,c.place,c.kind,c.pay,c.time].join('|'); if(seen.has(k) || !c.content) return; seen.add(k);
+    out.push({label:`${prefix}${c.time}　${c.content} · ${c.place} · NT$${money(c.pay)}`, c});
+  };
+  const order = [1,2,3,4,5,6,0];
+  schedule.filter(c=>!c.until || c.until>=TODAY).sort((a,b)=>order.indexOf(a.dow)-order.indexOf(b.dow)||a.time.localeCompare(b.time))
+    .forEach(c=>add(c, '週'+DOW[c.dow]+' '));
+  month.extras.forEach(x=>add(x, '加課 '));
+  return out;
+}
+// Month-at-a-glance calendar: one cell per day, a dot per class (green 有開, red 停課, outlined = 還沒到), tap to jump
+function calendarHTML(days){
+  const order = [1,2,3,4,5,6,0];
+  const lead = order.indexOf(days[0].dow);
+  const cells = [];
+  for(let i=0;i<lead;i++) cells.push('<div class="calcell blank" aria-hidden="true"></div>');
+  days.forEach(day=>{
+    const off = day.items.filter(i=>i.status==='off').length;
+    const extra = day.items.filter(i=>i.extra).length;
+    const held = day.items.filter(i=>i.status==='held').reduce((a,i)=>a+i.pay,0);
+    const future = day.ds > TODAY;
+    const dots = day.items.map(i=>`<i class="${i.status}${i.extra?' extra':''}"></i>`).join('');
+    const label = `${Number(day.ds.slice(5,7))}月${day.d}日 週${DOW[day.dow]}，${day.items.length} 堂${off?`，停課 ${off} 堂`:''}${extra?`，加課 ${extra} 堂`:''}`;
+    cells.push(`<button type="button" class="calcell${day.ds===TODAY?' today':''}${future?' future':''}${off?' hasoff':''}${!day.items.length?' empty':''}" data-goto="${day.ds}" aria-label="${label}">
+      <span class="cd">${day.d}</span>
+      <span class="cdots">${dots}</span>
+      <span class="camt">${day.items.length?(held?money(held):'—'):''}</span>
+      ${off?`<span class="coff">停${off}</span>`:''}
+    </button>`);
+  });
+  while(cells.length % 7) cells.push('<div class="calcell blank" aria-hidden="true"></div>');
+  return `<section class="cal card" aria-label="本月開課月曆">
+    <div class="calhead">${order.map(d=>`<span class="${d===0||d===6?'we':''}">${DOW[d]}</span>`).join('')}</div>
+    <div class="calgrid">${cells.join('')}</div>
+    <div class="callegend"><span><i class="held"></i>有開</span><span><i class="off"></i>停課</span><span><i class="held extra"></i>加課</span><span class="fut"><i class="held"></i>還沒到</span><span>點日期跳到那一天</span></div>
+  </section>`;
+}
+function renderLog(days){
+  const isThisMonth = monthKey===TODAY.slice(0,7);
+  const blank = !schedule.length && !hasRecords(allData());
+  let html = (blank ? `<div class="card emptystate"><b>還沒有資料</b><p>這個網頁本身不含任何課表或學員資料。請按右上角「連線 Google 雲端硬碟」載入雲端的資料，或從「備份選項」→「從備份檔還原」匯入備份 .json。</p></div>` : '')
+    + calendarHTML(days) + `<div class="toolbar" style="margin-top:14px">
+    <span class="hint">每堂課預設都算「有開」，沒上的課按「停課」，再按一次就恢復。金額可以直接改。</span>
+    <span style="display:flex;gap:8px;flex-wrap:wrap">
+      ${isThisMonth?'<button class="btn" id="jumpToday">跳到今天</button>':''}
+    </span></div>`;
+  html += '<div class="days" style="margin-top:12px">';
+  days.forEach(day=>{
+    const dt = day.items.filter(i=>i.status==='held').reduce((s,i)=>s+i.pay,0);
+    const isToday = day.ds===TODAY;
+    html += `<article class="day${isToday?' today':''}" id="day-${day.ds}">
+      <div class="dayhead">
+        <span class="d">${Number(day.ds.slice(5,7))}/${day.d}</span>
+        <span class="w${day.dow===0||day.dow===6?' we':''}">週${DOW[day.dow]}</span>
+        ${isToday?'<span class="tag">今天</span>':''}
+        <span class="mini" aria-hidden="true">${day.items.map(i=>`<span class="${i.status}"></span>`).join('')}</span>
+        <span class="tot">已開 <span class="num">NT$ ${money(dt)}</span></span>
+      </div>`;
+    day.items.forEach(it=>{
+      const id = 'pay-'+it.key.replace(/[^a-zA-Z0-9_-]/g,'');
+      const pn = isPrivate(it.content) ? privName(it.content) : '';
+      const busy = it.selfrun || (pn && (isTimeBased(pn) || (it.status==='held' && modeOf(pn)==='perclass')));   // extra controls: 點名, minutes box or 收款
+      html += `<div class="row ${it.status}${busy?' busy':''}">
+        <div class="time">${esc(it.time)}<small>${it.dur} 分</small></div>
+        <div class="what"><b>${esc(it.content)}${it.extra?'<span class="x">加課</span>':''}${it.orphan?'<span class="x">舊課表</span>':''}</b><span>${esc(it.place)}${it.kind?' · '+esc(it.kind):''}</span></div>
+        <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${it.sr.makeup.length?` · 補 ${it.sr.makeup.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
+        <div class="act">
+          <button class="seg yes" aria-pressed="${it.status==='held'}" data-key="${esc(it.key)}" data-s="held">有開</button>
+          <button class="seg no" aria-pressed="${it.status==='off'}" data-key="${esc(it.key)}" data-s="off">停課</button>
+          ${it.status==='held' && isPrivate(it.content) && modeOf(privName(it.content))==='perclass' ? `<button class="seg paid" aria-pressed="${!!month.paid[it.key]}" data-paidbtn="${esc(it.key)}" title="堂結：這堂收到錢了嗎">${month.paid[it.key]?'已收':'收款'}</button>`:''}
+          ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
+        </div>
+      </div>`;
+      if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
+    });
+    if(addOpenFor===day.ds){
+      html += `<form class="addform" data-date="${day.ds}">
+        <label class="full">從現有課程帶入（選完還可以再改，也可以不選直接填）
+          <select class="field" id="ax-pick">
+            <option value="">— 不帶入，全部自己填 —</option>
+            ${pickOptions().map((o,i)=>`<option value="${i}">${esc(o.label)}</option>`).join('')}
+          </select></label>
+        <label>時間<input class="field" id="ax-time" type="time" value="12:00" required></label>
+        <label>分鐘<input class="field" id="ax-dur" type="number" min="0" step="5" inputmode="numeric" value="60" required></label>
+        <label class="wide">上課內容<input class="field" id="ax-content" autocomplete="off" placeholder="例：代課 body pump" required></label>
+        <label>地點<input class="field" id="ax-place" autocomplete="off" placeholder="例：XX 運動中心" required></label>
+        <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" required></label>
+        <div class="btns"><button class="btn primary" type="submit">加入</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
+      </form>`;
+    } else {
+      html += `<div class="addrow"><button class="addlink" data-add="${day.ds}">＋ 加一堂臨時課 / 代課</button></div>`;
+    }
+    html += '</article>';
+  });
+  html += '</div>';
+  $('#view').innerHTML = html;
+}
+
+// 私教課 (課名含「私教」) is paid per student; every other class is a group class paid per venue
+const isPrivate = content => /私教|私人課/.test(String(content||''));
+function sources(days){
+  const map = new Map();
+  days.forEach(d=>d.items.forEach(it=>{
+    if(it.selfrun) return;   // 自營團課 has its own section
+    const cat = isPrivate(it.content) ? 'private' : 'group';
+    const place = (it.place||'').trim();
+    const client = cat==='private' ? (clientOf(it.content) || '未寫名字') : '';
+    const k = cat+'｜'+place+(client?'｜'+client:'');
+    if(!map.has(k)) map.set(k,{key:k, cat, place, client, classes:new Set(), held:0, heldN:0, offN:0});
+    const s = map.get(k);
+    s.classes.add(cat==='group' ? it.content : '');
+    if(it.status==='off') s.offN++; else { s.held+=it.pay; s.heldN++; }
+  }));
+  return [...map.values()].sort((a,b)=>b.held-a.held);
+}
+// Received amount: only what the user actually typed; empty means not reconciled yet
+const isRecvSet = s => { const r = month.received[s.key]; return !(r==null || r===''); };
+function diffText(d){
+  if(d===0) return '<span class="chip ok">相符</span>';
+  if(d<0) return `<span class="chip bad">少 ${money(-d)}</span>`;
+  return `<span class="chip more">多 ${money(d)}</span>`;
+}
+/* ---------- prepaid private students ---------- */
+let prepaid = {students:{}};
+// How each private student pays: prepaid (買課程扣堂) / perclass (堂結, 每堂當場收) / monthly (月結, 預設)
+const MODES = {prepaid:'預繳', perclass:'堂結', monthly:'月結'};
+function loadPrepaid(){
+  const d = lsGet('config/prepaid');
+  prepaid = (d && d.students) ? d : {v:3, students:{}};
+  let changed = !d;
+  if((prepaid.v||1) < 2){   // v2 added 堂結
+    prepaid.v = 2; changed = true;
+  }
+  if(prepaid.v < 3){        // v3 added 按時間
+    prepaid.v = 3; changed = true;
+  }
+  if(changed) lsSet('config/prepaid', prepaid);
+}
+const savePrepaid = () => queue('config/prepaid', prepaid);
+const privName = content => clientOf(content) || '未寫名字';
+const modeOf = name => { const st = prepaid.students[name]; return !st ? 'monthly' : (st.mode || (st.on ? 'prepaid' : 'monthly')); };
+const isPrepaid = name => modeOf(name)==='prepaid';
+// Prepaid students are charged per class (按堂數, −1 each) or by time (按時間, −minutes/60 hours)
+const unitOf = name => ((prepaid.students[name]||{}).unit === 'time') ? 'time' : 'class';
+const isTimeBased = name => isPrepaid(name) && unitOf(name)==='time';
+const unitWord = name => unitOf(name)==='time' ? '小時' : '堂';
+const fmtQ = n => String(Math.round(n*100)/100);
+function hourlyRateOf(name){
+  const st = prepaid.students[name];
+  if(st && st.rate) return st.rate;
+  const c = schedule.find(c=>isPrivate(c.content) && privName(c.content)===name && (!c.until || c.until>=TODAY));
+  return c && c.dur ? Math.round(c.pay / (c.dur/60)) : 0;
+}
+function setMode(name, mode){
+  const st = prepaid.students[name] || (prepaid.students[name] = {entries:[]});
+  st.mode = mode; delete st.on;
+  savePrepaid();
+}
+const modeSelect = name => `<label class="modesel">付款<select class="field" data-mode-for="${esc(name)}" aria-label="${esc(name)} 付款方式">${Object.entries(MODES).map(([k,v])=>`<option value="${k}"${modeOf(name)===k?' selected':''}>${v}</option>`).join('')}</select></label>`;
+let pcDetail = null;
+/* ---------- 自營團課: 一期 8 個日期，預繳期課（一種 8 堂 / 兩種 16 堂）、單堂報名、請假補課 ---------- */
+// config/selfrun v4: {v, cids:[classId…], terms:[{id, name, dates:[ds…], price:{one, both}, single, venue, students:[{id, name, pkg:'both'|classId, fee, paid, from}]}]}
+// Each term keeps its own prices, so opening a new term never changes an old one.
+// month.att[ds_cid] = {leave:[studentId], makeup:[studentId], single:[{name, amount}]}
+let selfrun = {v:4, cids:[], terms:[]};
+const saveSelfrun = () => queue('config/selfrun', selfrun);
+function loadSelfrun(){
+  const d = lsGet('config/selfrun');
+  if(d && (d.v||1) >= 3 && Array.isArray(d.terms)){
+    selfrun = d;
+    if((d.v||3) < 4){   // v3 kept prices on the top level and called the first term 第一期
+      d.terms.forEach(t=>{ t.price = t.price || {...(d.price||{one:2000, both:4000})}; if(t.single==null) t.single = d.single ?? 350; if(t.venue==null) t.venue = d.venue ?? 600; });
+      delete d.price; delete d.single; delete d.venue; d.v = 4;
+      lsSet('config/selfrun', d);
+    }
+    return;
+  }
+  selfrun = {v:4, cids:[], terms:[]};   // nothing stored yet (or a format older than v3): empty until data is loaded
+}
+const isSR = cid => !!(selfrun.cids && selfrun.cids.includes(cid));
+const termOf = ds => (selfrun.terms||[]).find(t=>t.dates.includes(ds));
+const inClass = (st, cid) => st.pkg==='both' || st.pkg===cid;
+const startOf = (t, st) => st.from || t.dates[0];
+const pkgPrice = (pkg, t) => pkg==='both' ? ((t.price||{}).both||0) : ((t.price||{}).one||0);
+function srShort(cid){ const c = schedule.find(x=>x.id===cid) || {}; const s = c.content||cid; return /combat/i.test(s) ? 'Combat' : /肌力/.test(s) ? '肌力' : s; }
+const pkgName = (pkg, t) => pkg==='both' ? `兩種（${t.dates.length*selfrun.cids.length} 堂）` : `${srShort(pkg)}（${t.dates.length} 堂）`;
+// one session's share of a student's fee: fee ÷ the sessions the package covers from their start date
+// 停課 sessions of a term (read from each month's records; `mo` stands in for its own month when given)
+function srOffSet(t, mo, mk){
+  const off = new Set();
+  [...new Set(t.dates.map(d=>d.slice(0,7)))].forEach(m=>{
+    const x = (mo && m===mk) ? mo : moOf(m);
+    Object.entries(x.entries||{}).forEach(([k,e])=>{ if(e.s==='off' && t.dates.includes(k.slice(0,10))) off.add(k); });
+  });
+  return off;
+}
+// one session's share of a student's fee: fee ÷ the sessions actually held from their start date (停課 ones don't count)
+function shareOf(t, st, off){
+  const cids = st.pkg==='both' ? selfrun.cids : [st.pkg];
+  let n = 0;
+  t.dates.forEach(d=>{ if(d >= startOf(t, st)) cids.forEach(cid=>{ if(!off || !off.has(d+'_'+cid)) n++; }); });
+  return n ? (st.fee||0) / n : 0;
+}
+const moOf = mk => mk===monthKey ? month : normMonth(lsGet('months/'+mk) || emptyMonth());
+function srSession(ds, cid, mo){
+  const t = termOf(ds); if(!t) return null;
+  const key = ds+'_'+cid;
+  mo = mo || moOf(ds.slice(0,7));
+  const a = (mo.att||{})[key] || {}, e = (mo.entries||{})[key] || {};
+  const enrolled = t.students.filter(st=>inClass(st, cid) && ds >= startOf(t, st));
+  const leave = enrolled.filter(st=>(a.leave||[]).includes(st.id)).map(st=>st.id);
+  const makeup = (a.makeup||[]).filter(id=>t.students.some(st=>st.id===id));
+  const single = a.single || [];
+  const off = srOffSet(t, mo, ds.slice(0,7));
+  const fees = enrolled.reduce((s,st)=>s+shareOf(t, st, off), 0), singles = single.reduce((s,x)=>s+(x.amount||0), 0);
+  const value = Math.round(fees + singles - (t.venue||0));
+  return {t, ds, cid, key, enrolled, leave, makeup, single, fees:Math.round(fees), singles,
+    present: enrolled.length - leave.length + makeup.length + single.length,
+    status: e.s==='off' ? 'off' : 'held', value, pay: e.pay ?? value};
+}
+// change one session's attendance, whichever month it is in
+function srEdit(key, fn){
+  const mk = key.slice(0,7), mo = moOf(mk);
+  const a = mo.att[key] || (mo.att[key] = {});
+  fn(a);
+  if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
+}
+function termSessions(t){
+  const out = [];
+  t.dates.slice().sort().forEach(ds=>selfrun.cids.forEach(cid=>{ const s = srSession(ds, cid); if(s) out.push(s); }));
+  return out;
+}
+// per student: sessions attended, leaves, make-ups taken, still owed
+function srTally(t, sessions){
+  const r = {};
+  t.students.forEach(st=>r[st.id] = {came:0, due:0, leave:0, makeup:0, leaveDates:[], makeupDates:[]});
+  sessions.forEach(s=>{
+    if(s.status!=='held') return;
+    const past = s.ds <= TODAY;
+    s.enrolled.forEach(st=>{ const x = r[st.id]; x.due++; if(s.leave.includes(st.id)){ x.leave++; x.leaveDates.push(s); } else if(past) x.came++; });
+    s.makeup.forEach(id=>{ const x = r[id]; if(!x) return; x.makeup++; x.makeupDates.push(s); if(past) x.came++; });
+  });
+  Object.values(r).forEach(x=>x.owed = Math.max(0, x.leave - x.makeup));
+  return r;
+}
+let srOpen = null, srDel = null, srTermId = null, srShown = null;
+function stuOf(id){ for(const t of selfrun.terms||[]){ const st = t.students.find(s=>s.id===id); if(st) return {t, st}; } return {}; }
+function holder(n){ return prepaid.students[n] || (prepaid.students[n] = {entries:[]}); }
+function saveHolder(){ savePrepaid(); }
+const nameOf = n => n;
+const unitSelect = name => `<label class="modesel">扣法<select class="field" data-unit-for="${esc(name)}" aria-label="${esc(name)} 扣法"><option value="class"${unitOf(name)==='class'?' selected':''}>按堂數</option><option value="time"${unitOf(name)==='time'?' selected':''}>按時間</option></select></label>`;
+let ppOpen = null, ppDetail = null, ppConfirmDel = null, ppEditId = null;   // ppEditId: the entry being corrected
+
+// Every held private class up to `upto` (inclusive), per student
+function heldPrivateClasses(upto){
+  const out = {};
+  const [ey,em] = upto.slice(0,7).split('-').map(Number);
+  let [y,m] = START_MONTH.split('-').map(Number);
+  while(y<ey || (y===ey && m<=em)){
+    const mk = y+'-'+pad(m);
+    const mo = mk===monthKey ? month : normMonth(lsGet('months/'+mk) || emptyMonth());
+    daysOfMonth(mk, mo).forEach(day=>{
+      if(day.ds > upto) return;
+      day.items.forEach(it=>{
+        if(it.status!=='held' || !isPrivate(it.content)) return;
+        const n = privName(it.content);
+        (out[n] = out[n] || []).push({date:day.ds, time:it.time, content:it.content, place:it.place, mins:it.mins});
+      });
+    });
+    m++; if(m>12){ m=1; y++; }
+  }
+  return out;
+}
+// Running balance: a purchase counts from the start of its day, "目前剩餘" is the balance at the end of its day.
+// Classes before the first entry are not deducted.
+function ledgerOf(name, classes, upto){
+  const st = prepaid.students[name] || {entries:[]};
+  const entries = (st.entries||[]).filter(e=>e.date<=upto);
+  if(!entries.length) return {started:false, balance:0, rows:[]};
+  // Deduction starts on the purchase day, or the day after a "目前剩餘" entry
+  const nextDay = d => { const x = new Date(d+'T00:00:00'); x.setDate(x.getDate()+1); return ymd(x); };
+  const start = entries.map(e=>e.type==='set' ? nextDay(e.date) : e.date).sort()[0];
+  const ev = [];
+  entries.forEach(e=>ev.push({date:e.date, order:e.type==='set'?2:0, kind:e.type, e}));
+  (classes||[]).forEach(c=>{ if(c.date>=start) ev.push({date:c.date, order:1, kind:'class', c}); });
+  ev.sort((a,b)=>a.date.localeCompare(b.date) || a.order-b.order);
+  const time = unitOf(name)==='time', U = time ? '小時' : '堂';
+  let bal = 0; const rows = [];
+  ev.forEach(x=>{
+    if(x.kind==='buy'){ bal += x.e.count; rows.push({date:x.date, text:`購買 ${fmtQ(x.e.count)} ${U}`, amount:x.e.amount, delta:'+'+fmtQ(x.e.count), bal, id:x.e.id}); }
+    else if(x.kind==='set'){ bal = x.e.count; rows.push({date:x.date, text:`登記目前剩餘 ${fmtQ(x.e.count)} ${U}`, delta:'＝'+fmtQ(x.e.count), bal, id:x.e.id}); }
+    else { const d = time ? (x.c.mins||0)/60 : 1; bal -= d; rows.push({date:x.date, text:`上課 ${x.c.time} ${x.c.content}${time?` · ${x.c.mins} 分鐘`:''}`, delta:'−'+fmtQ(d), bal}); }
+  });
+  bal = Math.round(bal*100)/100;
+  return {started:true, balance:bal, rows};
+}
+function balanceChip(l, comingThisMonth, U='堂'){
+  if(!l.started) return '<span class="chip none">還沒登記</span>';
+  if(l.balance<0) return `<span class="chip bad">超上 ${fmtQ(-l.balance)} ${U}，未付</span>`;
+  if(l.balance<=2) return '<span class="chip wait">快用完</span>';
+  if(comingThisMonth > l.balance) return `<span class="chip wait">這個月會不夠 ${fmtQ(comingThisMonth - l.balance)} ${U}</span>`;
+  return '<span class="chip ok">足夠</span>';
+}
+function unitPriceOf(name){
+  const c = schedule.find(c=>isPrivate(c.content) && clientOf(c.content)===name && (!c.until || c.until>=TODAY));
+  return c ? c.pay : 0;
+}
+
+function ppFormRow(n, cols){
+  let html = '';
+        const U = unitWord(n), time = unitOf(n)==='time';
+        const unit = time ? hourlyRateOf(n) : unitPriceOf(n);   // price of one 堂 or one 小時
+        const ed = ppEditId ? (holder(n).entries||[]).find(x=>x.id===ppEditId) : null;
+        const type = ed ? ed.type : 'buy', buy = type==='buy';
+        const count = ed ? ed.count : 10, amount = ed ? (ed.amount ?? 0) : unit*10;
+        html += `<tr class="ppform-row"><td colspan="${cols}"><form class="ppform${ed?' editing':''}" data-name="${esc(n)}"${ed?` data-edit-id="${ed.id}"`:''}>
+          ${ed?`<p class="ppedit-title">修正 ${Number(ed.date.slice(5,7))}/${Number(ed.date.slice(8,10))} 的登記（原本：${ed.type==='buy'?`購買 ${fmtQ(ed.count)} ${U} · NT$${money(ed.amount||0)}`:`目前剩餘 ${fmtQ(ed.count)} ${U}`}）</p>`:''}
+          <label>登記什麼<select class="field" id="pp-type"><option value="buy"${buy?' selected':''}>購買課程（有收錢）</option><option value="set"${!buy?' selected':''}>目前剩餘${time?'時數':'堂數'}（不算收入）</option></select></label>
+          <label>日期<input class="field" id="pp-date" type="date" value="${ed?ed.date:TODAY}" min="${START_MONTH}-01" required></label>
+          <label><span id="pp-count-lab" data-u="${U}">${buy?'買幾':'剩幾'}${U}</span><input class="field" id="pp-count" type="number" min="0" step="${time?'0.5':'1'}" inputmode="decimal" value="${count}" required data-unit="${unit}"></label>
+          <label id="pp-amount-wrap"${buy?'':' hidden'}>收了多少 NT$<input class="field" id="pp-amount" type="number" min="0" step="50" inputmode="numeric" value="${amount}"${buy?' required':''}${ed?' data-touched="1"':''}></label>
+          <div class="btns"><button class="btn primary" type="submit">${ed?'儲存修正':'登記'}</button><button class="btn" type="button" id="pp-cancel">取消</button></div>
+          <p class="note ppnote" id="pp-note">${buy?'購買：從這天開始上的課會扣這包。':'目前剩餘：這天（含）以前的課視為已扣完，從隔天起的課才會扣。'}</p>
+        </form></td></tr>`;
+        return html;
+}
+function ppDetailRow(n, l, uptoText, cols){
+  let html = '';
+        const list = l.rows.slice().reverse().map(r=>`<li><span class="d">${Number(r.date.slice(5,7))}/${Number(r.date.slice(8,10))}</span><span class="t">${esc(r.text)}${r.amount?` · NT$${money(r.amount)}`:''}</span><span class="delta ${r.delta.startsWith('−')?'minus':''}">${r.delta}</span><span class="bal">剩 ${fmtQ(r.bal)}</span>${r.id?(ppConfirmDel===r.id?`<span class="delconfirm">刪除這筆？<button class="btn small danger" data-pp-delyes="${esc(n)}|${r.id}">刪除</button><button class="btn small" data-pp-delno="1">取消</button></span>`:`<span class="ppbtns"><button class="btn small" data-pp-edit="${esc(n)}|${r.id}">修正</button><button class="del" aria-label="刪除這筆登記" data-pp-del="${r.id}">×</button></span>`):''}</li>`).join('');
+        html += `<tr class="ppdetail-row"><td colspan="${cols}">
+          ${l.rows.length?`<ol class="ppledger">${list}</ol>`:'<p class="note">還沒有任何登記。按「登記」輸入購買或目前剩餘堂數後，之後上的課會自動扣。</p>'}
+          <div class="ppfoot"><span class="note">餘額算到${uptoText}為止；登記以前的課不扣。</span></div>
+        </td></tr>`;
+        return html;
+}
+const md = d => `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
+// 點名 panel for one session: 期課學員 (出席/請假), 補課, 單堂報名
+function srPanel(key){
+  const ds = key.slice(0,10), cid = key.slice(11), s = srSession(ds, cid); if(!s) return '';
+  const t = s.t, tally = srTally(t, termSessions(t));
+  const cands = t.students.filter(st=>!s.makeup.includes(st.id) && !s.enrolled.some(e=>e.id===st.id))
+    .sort((a,b)=>(tally[b.id].owed - tally[a.id].owed) || a.name.localeCompare(b.name,'zh-Hant'));
+  const nm = id => (t.students.find(st=>st.id===id)||{}).name || '';
+  const names = [...new Set(termSessions(t).flatMap(x=>x.single.map(y=>y.name)).filter(Boolean))];
+  return `<div class="attpanel srpanel">
+    <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，逐日記錄也會變停課">這堂停課</button></span></div>
+    <div class="attgrid">${s.enrolled.map(st=>{ const lv = s.leave.includes(st.id);
+      return `<label class="attm${lv?' leave':''}"><input type="checkbox" data-srlv="${esc(key)}|${st.id}"${lv?'':' checked'}>${esc(st.name)}${lv?'<small>請假</small>':''}</label>`; }).join('') || '<span class="hint">這堂沒有期課學員</span>'}</div>
+    <div class="atthead"><b>補課</b><span class="hint">別堂請假的學員來這堂補（不另收費）</span></div>
+    <div class="attgrid">${s.makeup.map(id=>`<span class="sgchip">${esc(nm(id))}<button class="sgx" aria-label="取消 ${esc(nm(id))} 的補課" data-srmkdel="${esc(key)}|${id}">×</button></span>`).join('')}
+      <form class="srmk inline" data-key="${esc(key)}"><select class="field" name="s" required aria-label="補課學員"><option value="">選學員…</option>${cands.map(st=>`<option value="${st.id}">${esc(st.name)}${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</select><button class="btn small" type="submit">＋ 補課</button></form></div>
+    <div class="atthead"><b>單堂報名</b><span class="hint">這次來、這次付</span></div>
+    <div class="attgrid">${s.single.map((x,i)=>`<span class="sgchip">${esc(x.name||'（沒寫名字）')} · NT$${money(x.amount)}<button class="sgx" aria-label="刪除這筆單堂" data-srsgdel="${esc(key)}|${i}">×</button></span>`).join('')}
+      <form class="srsg inline" data-key="${esc(key)}"><input class="field" name="n" placeholder="名字" autocomplete="off" list="dl-srn-${esc(key)}" aria-label="單堂學員名字"><input class="field num" name="a" type="number" min="0" step="10" inputmode="numeric" value="${t.single||0}" required aria-label="收了多少"><button class="btn small" type="submit">＋ 單堂</button>
+      <datalist id="dl-srn-${esc(key)}">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></form></div>
+    <p class="hint srcalc">這堂金額 = 期課學費分攤 NT$${money(s.fees)}（${s.enrolled.length} 位）${s.singles?` + 單堂 NT$${money(s.singles)}`:''} − 場地費 NT$${money(t.venue||0)} = <b>NT$${money(s.value)}</b></p>
+  </div>`;
+}
+// 開新一期: name, first date, how many weeks, prices; optionally carry the last term's students over as 未繳費
+let srNewOpen = false, srTermDel = null;
+function srNewForm(){
+  const last = selfrun.terms[selfrun.terms.length-1] || {dates:[], price:{one:2000, both:4000}, single:350, venue:600, name:''};
+  const m = String(last.name||'').match(/\d+/), name = m ? String(last.name).replace(/\d+/, Number(m[0])+1) : `第 ${selfrun.terms.length+1} 期`;
+  const ld = last.dates.slice().sort().pop(), first = ld ? (()=>{ const x = new Date(ld+'T00:00:00'); x.setDate(x.getDate()+7); return ymd(x); })() : TODAY;
+  return `<form class="srnew card" autocomplete="off">
+    <p class="srnew-title"><b>開新一期</b><span class="hint">每週同一天上課，先照堂數排好日期，之後可以在「這一期設定」刪掉放假的日子或加日期。舊的期數不會改變。</span></p>
+    <label>期名<input class="field" name="name" value="${esc(name)}" required></label>
+    <label>第一堂<input class="field" name="first" type="date" value="${first}" required></label>
+    <label>幾堂（週）<input class="field num" name="n" type="number" min="1" max="30" inputmode="numeric" value="${last.dates.length||8}" required></label>
+    <label>一種課程 NT$<input class="field num" name="one" type="number" min="0" step="100" inputmode="numeric" value="${(last.price||{}).one||0}"></label>
+    <label>兩種課程 NT$<input class="field num" name="both" type="number" min="0" step="100" inputmode="numeric" value="${(last.price||{}).both||0}"></label>
+    <label>單堂 NT$<input class="field num" name="single" type="number" min="0" step="10" inputmode="numeric" value="${last.single||0}"></label>
+    <label>場地費 NT$<input class="field num" name="venue" type="number" min="0" step="50" inputmode="numeric" value="${last.venue||0}"></label>
+    ${last.students && last.students.length ? `<label class="chk"><input type="checkbox" name="copy" checked>沿用${esc(last.name)}的 ${last.students.length} 位學員（方案相同、學費照新價格，先標「未繳費」，沒續報的再刪掉）</label>` : ''}
+    <div class="btns"><button class="btn primary" type="submit">建立</button><button class="btn" type="button" data-srnew="1">取消</button></div>
+  </form>`;
+}
+// 自營團課 tab: one term at a time — 場次點名, 學員, 單堂報名, 設定
+function renderSelf(){
+  const terms = selfrun.terms || [];
+  if(!terms.length){ $('#view').innerHTML = '<p class="note" style="margin-top:12px">目前沒有自營團課。</p>'; return; }
+  let t = terms.find(x=>x.id===srTermId);
+  if(!t){ const inMonth = terms.filter(x=>x.dates.some(d=>d.slice(0,7)===monthKey)); t = inMonth.find(x=>x.dates.slice().sort().pop() >= TODAY) || inMonth.pop() || terms[terms.length-1]; }
+  srShown = t.id;
+  const sessions = termSessions(t), tally = srTally(t, sessions);
+  const held = sessions.filter(s=>s.status==='held');
+  const fees = t.students.reduce((a,st)=>a+(st.fee||0),0);
+  const singles = held.reduce((a,s)=>a+s.singles,0), singleN = held.reduce((a,s)=>a+s.single.length,0);
+  const venue = held.length * (t.venue||0);
+  const net = fees + singles - venue;
+  const mFees = t.students.filter(st=>(st.paid||'').slice(0,7)===monthKey).reduce((a,st)=>a+(st.fee||0),0);
+  const mS = held.filter(s=>s.ds.slice(0,7)===monthKey);
+  const mSingles = mS.reduce((a,s)=>a+s.singles,0), mValue = mS.reduce((a,s)=>a+s.pay,0);
+  const [my,mm] = monthKey.split('-').map(Number);
+  const owedN = Object.values(tally).filter(x=>x.owed).length;
+  const unpaid = t.students.filter(st=>!st.paid), unpaidFee = unpaid.reduce((a,st)=>a+(st.fee||0),0);
+  const dates = t.dates.slice().sort();
+  // 場次點名: rows = dates, columns = classes
+  const rows = dates.map(ds=>{
+    const cells = selfrun.cids.map(cid=>{
+      const s = sessions.find(x=>x.ds===ds && x.cid===cid); if(!s) return '<td></td>';
+      if(s.status==='off') return `<td><button class="srcell off" data-sroff="${esc(s.key)}|held" title="恢復成有開"><b>停課</b><span class="srtags">點一下恢復</span></button></td>`;
+      const tags = [s.leave.length?`假 ${s.leave.length}`:'', s.makeup.length?`補 ${s.makeup.length}`:'', s.single.length?`單 ${s.single.length}`:''].filter(Boolean).join(' · ');
+      return `<td><button class="srcell${ds>TODAY?' fut':''}" data-srp="${esc(s.key)}" aria-expanded="${srOpen===s.key}"><b>${s.present} 人</b><span class="srtags">${tags||'全到'}</span><span class="num">NT$${money(s.pay)}</span></button></td>`;
+    }).join('');
+    const open = selfrun.cids.map(cid=>ds+'_'+cid).find(k=>k===srOpen);
+    return `<tr class="${ds===TODAY?'today':''}"><th scope="row">${md(ds)}${ds.slice(0,7)===monthKey?'':`<small>${Number(ds.slice(5,7))}月</small>`}</th>${cells}</tr>`
+      + (open ? `<tr class="srpanelrow"><td colspan="${selfrun.cids.length+1}">${srPanel(open)}</td></tr>` : '');
+  }).join('');
+  // 學員
+  const pkgSel = st => `<select class="field" data-srpkg="${st.id}" aria-label="${esc(st.name)} 報名方案"><option value="both"${st.pkg==='both'?' selected':''}>${pkgName('both', t)}</option>${selfrun.cids.map(cid=>`<option value="${cid}"${st.pkg===cid?' selected':''}>${pkgName(cid, t)}</option>`).join('')}</select>`;
+  const stRows = t.students.map(st=>{
+    const x = tally[st.id];
+    const del = srDel===st.id ? `<tr class="mdelrow"><td colspan="4"><p><b>${esc(st.name)}</b>：確定要從${esc(t.name)}刪除？</p>
+      <div class="mdelopts"><div><button class="btn danger" data-srdelyes="${st.id}">刪除</button><button class="btn" data-srdelno="1">取消</button><span class="hint">學費、請假、補課紀錄都會刪掉，已上過的課金額會重算。加錯人才用。</span></div></div></td></tr>` : '';
+    return `<tr class="pprow">
+      <td class="src"><b>${esc(st.name)}</b>${st.paid?'':'<span class="chip wait">未繳費</span>'}${pkgSel(st)}${startOf(t, st)!==dates[0]?`<span>從 ${md(startOf(t, st))} 開始</span>`:''}<div class="m-acts"><button class="btn small" data-srdel="${st.id}">刪除</button></div></td>
+      <td class="r srfee"><label>NT$<input class="field num" type="number" min="0" step="100" inputmode="numeric" value="${st.fee||0}" data-srfee="${st.id}" aria-label="${esc(st.name)} 學費"></label><label class="small">繳費日<input class="field" type="date" value="${st.paid||''}" data-srpaid="${st.id}" aria-label="${esc(st.name)} 繳費日"></label></td>
+      <td class="r"><span class="big">${x.came}</span><span class="small"> / ${x.due} 堂</span>
+        ${x.leave?`<div class="small">請假 ${x.leaveDates.map(s=>`${md(s.ds)}${srShort(s.cid)}`).join('、')}</div>`:''}
+        ${x.makeup?`<div class="small">補課 ${x.makeupDates.map(s=>`${md(s.ds)}${srShort(s.cid)}`).join('、')}</div>`:''}
+        ${x.owed?`<span class="chip wait">待補 ${x.owed} 堂</span>`:''}</td>
+      <td class="ppact"><button class="del" title="刪除學員" aria-label="刪除 ${esc(st.name)}" data-srdel="${st.id}">×</button></td>
+    </tr>${del}`;
+  }).join('');
+  const nextDate = dates.find(d=>d>=TODAY) || dates[0];
+  // 單堂報名, grouped by name
+  const sg = {};
+  sessions.forEach(s=>s.single.forEach((x,i)=>{ const n = x.name || '（沒寫名字）'; (sg[n] = sg[n] || []).push({s, i, x}); }));
+  const sgList = Object.entries(sg).map(([n,xs])=>`<li><div class="dgname"><b>${esc(n)}</b><span class="hint">${xs.length} 次 · NT$${money(xs.reduce((a,y)=>a+(y.x.amount||0),0))}</span></div>
+    <div class="dgdates">${xs.map(y=>`<span class="sgchip">${md(y.s.ds)} ${esc(srShort(y.s.cid))} · NT$${money(y.x.amount)}<button class="sgx" aria-label="刪除 ${md(y.s.ds)} 這筆" data-srsgdel="${esc(y.s.key)}|${y.i}">×</button></span>`).join('')}</div></li>`).join('');
+  const sessOpts = sessions.filter(s=>s.status==='held').map(s=>`<option value="${esc(s.key)}"${s.ds===nextDate && s.cid===selfrun.cids[0]?' selected':''}>${md(s.ds)} ${esc(srShort(s.cid))}</option>`).join('');
+  $('#view').innerHTML = `
+    <div class="toolbar"><span class="hint">${esc(t.name)}共 ${dates.length} 個日期、兩堂課。期課預繳（一種 ${dates.length} 堂 NT$${money((t.price||{}).one)}，兩種 ${dates.length*2} 堂 NT$${money((t.price||{}).both)}），單堂 NT$${money(t.single)}。點名在下面的表格或「逐日記錄」的「點名」按鈕。</span></div>
+    <div class="srterms">${terms.map(x=>`<button class="btn small${x.id===t.id?' primary':''}" data-srterm="${x.id}">${esc(x.name)}</button>`).join('')}<button class="btn small" data-srnew="1" aria-expanded="${srNewOpen}">＋ 開新一期</button></div>
+    ${srNewOpen ? srNewForm() : ''}
+    <section class="recsec card srsec" id="sr-set">
+      <div class="rechead"><h3>${esc(t.name)}設定</h3></div>
+      <details class="srhowd"><summary>這些設定是做什麼的？</summary><ul class="srhow">
+        <li><b>一種 / 兩種課程價格</b>：新增學員時帶入的學費，改了不會動到已登記的學員（個別學費在下面學員表改）。</li>
+        <li><b>單堂價</b>：單堂報名預設收多少。</li>
+        <li><b>場地費</b>：每堂要扣掉的場地費，會影響每堂金額和淨收入。</li>
+        <li><b>上課日期</b>：這一期排定哪幾天上課，只有這些日期會出現在逐日記錄。排錯的日期才在這裡刪；臨時取消的課請在「場次點名」按「停課」（逐日記錄會一起變停課），要補一堂就加日期。</li>
+        <li><b>停課</b>：停掉的那堂不算錢也不扣場地費，學費改由其他有上的堂數分攤，整期學費不會少。</li>
+        <li>每一期的價格和日期各自獨立，改這一期不會影響其他期。</li>
+      </ul></details>
+      <div class="srset">
+        <label>一種課程 NT$<input class="field" type="number" min="0" step="100" inputmode="numeric" value="${(t.price||{}).one||0}" data-srset="one"></label>
+        <label>兩種課程 NT$<input class="field" type="number" min="0" step="100" inputmode="numeric" value="${(t.price||{}).both||0}" data-srset="both"></label>
+        <label>單堂 NT$<input class="field" type="number" min="0" step="10" inputmode="numeric" value="${t.single||0}" data-srset="single"></label>
+        <label>場地費（每堂）NT$<input class="field" type="number" min="0" step="50" inputmode="numeric" value="${t.venue||0}" data-srset="venue"></label>
+      </div>
+      <div class="srdates">
+        <span class="hint">${esc(t.name)}上課日期（兩堂課同一天）：</span>
+        ${dates.map(d=>`<span class="sgchip">${md(d)}<button class="sgx" aria-label="刪除 ${md(d)}" data-srdatedel="${d}">×</button></span>`).join('')}
+        <form class="srdate sgadd"><input class="field" name="d" type="date" required aria-label="新增上課日期"><button class="btn small" type="submit">＋ 加日期</button></form>
+      </div>
+      <p class="hint srnote">每堂金額 = 這堂期課學員的學費分攤（學費 ÷ 有上的堂數）+ 單堂 − 場地費。請假不退費，補課不另收費。</p>
+      ${terms.length>1 ? (srTermDel===t.id ? `<div class="srtermdel"><span>確定刪除${esc(t.name)}？學員、學費和日期都會刪掉，只在開錯期時使用。</span><button class="btn small danger" data-srtermdelyes="${t.id}">刪除這一期</button><button class="btn small" data-srtermdelno="1">取消</button></div>` : `<div class="srtermdel"><button class="btn small" data-srtermdel="${t.id}">刪除這一期…</button></div>`) : ''}
+    </section>
+    <nav class="recnav srnav card" aria-label="跳到">
+      <a class="recnav-item" href="#sr-sess" data-jump="sr-sess"><b>場次點名</b><span class="chip ok">${held.length} 堂</span></a>
+      <a class="recnav-item" href="#sr-stu" data-jump="sr-stu"><b>學員</b><span class="chip ${owedN||unpaid.length?'wait':'ok'}">${t.students.length} 位${unpaid.length?` · ${unpaid.length} 位未繳`:''}${owedN?` · ${owedN} 位待補課`:''}</span></a>
+      <a class="recnav-item" href="#sr-single" data-jump="sr-single"><b>單堂報名</b><span class="chip ok">${singleN} 次</span></a>
+    </nav>
+    <section class="recsec card srsec">
+      <div class="rechead"><h3>${esc(t.name)} · ${md(dates[0])}–${md(dates[dates.length-1])}</h3><span class="hint">${esc((schedule.find(c=>c.id===selfrun.cids[0])||{}).place||'')}</span></div>
+      <div class="recstats">
+        <div><span class="lab">整期淨收入</span><span class="big">NT$ ${money(net)}</span><span class="small">學費 ${money(fees)} + 單堂 ${money(singles)} − 場地 ${money(venue)}${unpaid.length?`（${unpaid.length} 位還沒繳 NT$${money(unpaidFee)}）`:''}</span></div>
+        <div><span class="lab">${mm} 月收到的錢</span><span class="big">NT$ ${money(mFees + mSingles)}</span><span class="small">學費 ${money(mFees)}（繳費日在本月）· 單堂 ${money(mSingles)}</span></div>
+        <div><span class="lab">${mm} 月上課金額</span><span class="big">NT$ ${money(mValue)}</span><span class="small">${mS.length} 堂，學費按堂分攤 − 場地費，算進逐日記錄</span></div>
+      </div>
+    </section>
+    <section class="recsec card srsec" id="sr-sess">
+      <div class="rechead"><h3>場次點名</h3><span class="hint">點格子打開點名：請假、補課、單堂報名</span></div>
+      <div class="tablewrap"><table class="srtable"><thead><tr><th>日期</th>${selfrun.cids.map(cid=>{ const c = schedule.find(x=>x.id===cid)||{}; return `<th>${esc(c.time||'')} ${esc(srShort(cid))}</th>`; }).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+    </section>
+    <section class="recsec card srsec" id="sr-stu">
+      <div class="rechead"><h3>學員</h3><span class="hint">學費總計 NT$${money(fees)} · 出席算到今天</span></div>
+      <div class="tablewrap"><table class="srstu"><thead><tr><th>學員 · 方案</th><th class="r">學費</th><th class="r">出席</th><th></th></tr></thead><tbody>${stRows}</tbody></table></div>
+      <form class="sradd" autocomplete="off">
+        <label>名字<input class="field" name="n" required></label>
+        <label>方案<select class="field" name="p"><option value="both">${pkgName('both', t)}</option>${selfrun.cids.map(cid=>`<option value="${cid}">${pkgName(cid, t)}</option>`).join('')}</select></label>
+        <label>學費 NT$<input class="field num" name="f" type="number" min="0" step="100" inputmode="numeric" value="${(t.price||{}).both||0}" required></label>
+        <label>繳費日<input class="field" name="d" type="date" value="${TODAY}" required></label>
+        <label>從哪堂開始<select class="field" name="s">${dates.map(d=>`<option value="${d}"${d===nextDate?' selected':''}>${md(d)}</option>`).join('')}</select></label>
+        <button class="btn primary" type="submit">＋ 新增學員</button>
+      </form>
+    </section>
+    <section class="recsec card srsec" id="sr-single">
+      <div class="rechead"><h3>單堂報名</h3><span class="hint">整期 ${singleN} 次 · NT$${money(singles)}</span></div>
+      <div class="dropblock">
+        ${sgList?`<ul class="dropgroups">${sgList}</ul>`:'<p class="hint" style="margin:0">還沒有單堂報名。</p>'}
+        <form class="srsg2 dropform2" autocomplete="off">
+          <label>哪一堂<select class="field" name="k" required>${sessOpts}</select></label>
+          <label>名字<input class="field" name="n" placeholder="可不填" list="dl-srsg"></label>
+          <label>收了多少 NT$<input class="field num" name="a" type="number" min="0" step="10" inputmode="numeric" value="${t.single||0}" required></label>
+          <div class="btns"><button class="btn" type="submit">＋ 單堂</button></div>
+          <datalist id="dl-srsg">${Object.keys(sg).filter(n=>n!=='（沒寫名字）').map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+        </form>
+      </div>
+    </section>
+`;
+}
+function placeOf(name){
+  const c = schedule.find(c=>isPrivate(c.content) && privName(c.content)===name);
+  if(c) return c.place;
+  for(const d of daysOfMonth()) for(const it of d.items) if(isPrivate(it.content) && privName(it.content)===name) return it.place;
+  return '';
+}
+function renderRec(days){
+  const all = sources(days);
+  const [my,mm] = monthKey.split('-').map(Number);
+  const monthEnd = ymd(new Date(my, mm, 0));
+  const upto = monthKey < TODAY.slice(0,7) ? monthEnd : TODAY;          // balances shown as of this day
+  const uptoText = upto===TODAY ? '今天' : `${mm}/${new Date(my,mm,0).getDate()}`;
+  let idx = 0;
+
+  // ---- invoiced sections (group classes, and private students paid monthly) ----
+  const invoiced = sec => {
+    const list = all.filter(sec.filter);
+    const T = {held:0, heldN:0, recv:0, dueOfFilled:0, filled:0};
+    const rows = list.map(s=>{
+      const i = idx++;
+      const set = isRecvSet(s), r = set ? Number(month.received[s.key]) : null;
+      T.held+=s.held; T.heldN+=s.heldN;
+      if(set){ T.recv+=r; T.dueOfFilled+=s.held; T.filled++; }
+      const name = sec.private ? s.client : s.place;
+      const sub = sec.private ? s.place : [...s.classes].filter(Boolean).join('、');
+      const toPP = sec.private ? modeSelect(s.client) : '';
+      return `<tr>
+        <td class="src"><b>${esc(name)}</b><span>${esc(sub)}</span>${toPP}</td>
+        <td class="r"><span class="big">${s.heldN}</span> <span class="small">堂</span>${s.offN?`<div class="small">停 ${s.offN}</div>`:''}</td>
+        <td class="r"><span class="big">${money(s.held)}</span></td>
+        <td class="r"><input class="field recv" id="recv-${i}" type="number" min="0" inputmode="numeric" placeholder="未填" value="${set?r:''}" data-src="${esc(s.key)}" aria-label="${esc(name)} 實收"></td>
+        <td>${set ? diffText(r - s.held) : '<span class="chip none">未填實收</span>'}</td>
+      </tr>`;
+    }).join('');
+    const left = list.length - T.filled;
+    return `<section class="recsec card" id="${sec.id}">
+      <div class="rechead"><h2>${sec.title}</h2><span class="hint">${sec.sub} · ${list.length} ${sec.unit}</span>
+        <span class="chip ${left?'none':'ok'} recleft">${list.length ? (left ? `還有 ${left} 個未填` : '已全部填寫') : '本月沒有'}</span></div>
+      <div class="recstats">
+        <div><span class="lab">應收</span><span class="big">NT$ ${money(T.held)}</span><span class="small">${T.heldN} 堂</span></div>
+        <div><span class="lab">實收</span><span class="big">${T.filled?'NT$ '+money(T.recv):'—'}</span><span class="small">已填 ${T.filled} / ${list.length}</span></div>
+        <div><span class="lab">差額${left&&T.filled?'（只算已填）':''}</span><span>${T.filled?diffText(T.recv - T.dueOfFilled):'<span class="chip none">未填實收</span>'}</span></div>
+      </div>
+      ${list.length?`<div class="tablewrap"><table>
+        <thead><tr><th>${sec.col}</th><th class="r">有開</th><th class="r">應收 NT$</th><th class="r">實收 NT$</th><th>差額</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>`:''}
+    </section>`;
+  };
+
+  // ---- prepaid section ----
+  const prepaidSection = () => {
+    const names = Object.keys(prepaid.students).filter(isPrepaid);
+    const classes = heldPrivateClasses(upto);
+    const monthHeld = {}, monthPlanned = {}, monthHeldN = {};
+    days.forEach(d=>d.items.forEach(it=>{
+      if(it.status!=='held' || !isPrivate(it.content)) return;
+      const n = privName(it.content); if(!isPrepaid(n)) return;
+      const q = unitOf(n)==='time' ? (it.mins||0)/60 : 1;
+      monthPlanned[n] = (monthPlanned[n]||0) + q;
+      if(d.ds<=upto){ monthHeld[n] = (monthHeld[n]||0) + q; monthHeldN[n] = (monthHeldN[n]||0) + 1; }
+    }));
+    const T = {cash:0, buys:0, used:0, warn:0};
+    const order = n => { const l = ledgerOf(n, classes[n], upto); return !l.started ? 1 : l.balance; };
+    names.sort((a,b)=>order(a)-order(b) || a.localeCompare(b));
+    const rows = names.map(n=>{
+      const l = ledgerOf(n, classes[n], upto);
+      const buysThisMonth = (holder(n).entries||[]).filter(e=>e.type==='buy' && e.date.slice(0,7)===monthKey);
+      const cash = buysThisMonth.reduce((a,e)=>a+e.amount,0), cnt = buysThisMonth.reduce((a,e)=>a+e.count,0);
+      T.cash+=cash; T.buys+=buysThisMonth.length; T.used+=(monthHeldN[n]||0);
+      const U = unitWord(n), time = unitOf(n)==='time';
+      const place = placeOf(n);
+      const planned = monthPlanned[n]||0, used = monthHeld[n]||0;
+      const lastEntry = (holder(n).entries||[]).slice(-1)[0];   // most recently registered entry
+      if(!l.started || l.balance<=2 || (planned-used) > l.balance) T.warn++;
+      const acts = `<button class="btn small" data-pp-add="${esc(n)}">登記</button>${lastEntry?`<button class="btn small" data-pp-edit="${esc(n)}|${lastEntry.id}" title="修正最近一筆登記">修正</button>`:`<button class="btn small" disabled title="還沒有登記可以修正，先按「登記」">修正</button>`}<button class="btn small ghostish" data-pp-detail="${esc(n)}" aria-expanded="${ppDetail===n}">${ppDetail===n?'收起':'明細'}</button>`;
+      let html = `<tr class="pprow">
+        <td class="src"><b>${esc(n)}</b><span>${esc(place)}${time?'':` · 單堂 NT$${money(unitPriceOf(n))}`}</span>${time?`<label class="ratel">每小時 NT$<input class="field ratein" type="number" min="0" step="50" inputmode="numeric" value="${hourlyRateOf(n)}" data-rate-for="${esc(n)}" aria-label="${esc(n)} 每小時收費"></label>`:''}<div class="selrow">${modeSelect(n)}${unitSelect(n)}</div><div class="m-acts">${acts}</div></td>
+        <td class="r"><span class="big">${fmtQ(used)}</span> <span class="small">${U}</span>${time&&monthHeldN[n]?`<div class="small">${monthHeldN[n]} 堂課</div>`:''}${planned>used?`<div class="small">本月還排 ${fmtQ(planned-used)} ${U}</div>`:''}</td>
+        <td class="r"><span class="big ${l.started&&l.balance<0?'neg':''}">${l.started?fmtQ(l.balance):'—'}</span> <span class="small">${U}</span><div>${balanceChip(l, planned-used, U)}</div></td>
+        <td class="r">${buysThisMonth.length?`<span class="big">${money(cash)}</span><div class="small">買 ${fmtQ(cnt)} ${U}</div>`:'<span class="small">—</span>'}</td>
+        <td class="ppact">${acts}</td>
+      </tr>`;
+      if(ppOpen===n) html += ppFormRow(n, 5);
+      if(ppDetail===n) html += ppDetailRow(n, l, uptoText, 5);
+      return html;
+    }).join('');
+    return `<section class="recsec card" id="rec-prepaid">
+      <div class="rechead"><h2>私教課 · 預繳</h2><span class="hint">先買課程，上課自動扣（按堂數或按時間） · ${names.length} 位學生</span>
+        <span class="chip ${T.warn?'wait':'ok'} recleft">${T.warn?`${T.warn} 位要注意`:'堂數都足夠'}</span></div>
+      <div class="recstats">
+        <div><span class="lab">本月收到（購買）</span><span class="big">NT$ ${money(T.cash)}</span><span class="small">${T.buys} 筆購買</span></div>
+        <div><span class="lab">本月已上</span><span class="big">${T.used} 堂</span><span class="small">算到${uptoText}</span></div>
+        <div><span class="lab">要續約 / 未登記</span><span class="big">${T.warn} 位</span><span class="small">快用完、這個月不夠或還沒登記</span></div>
+      </div>
+      ${names.length?`<div class="tablewrap"><table class="pptable">
+        <thead><tr><th>學生</th><th class="r">本月上課</th><th class="r">剩餘（${uptoText}）</th><th class="r">本月購買 NT$</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`:''}
+    </section>`;
+  };
+
+  // ---- per-class (堂結) section: each lesson is paid on the day ----
+  const perclassSection = () => {
+    const by = {};
+    days.forEach(d=>d.items.forEach(it=>{
+      if(it.status!=='held' || !isPrivate(it.content)) return;
+      const n = privName(it.content); if(modeOf(n)!=='perclass') return;
+      const b = by[n] || (by[n] = {due:[], later:0});
+      if(d.ds<=upto) b.due.push({...it, date:d.ds}); else b.later++;
+    }));
+    Object.keys(prepaid.students).filter(n=>modeOf(n)==='perclass').forEach(n=>{ by[n] = by[n] || {due:[], later:0}; });
+    const names = Object.keys(by).sort((a,b)=>a.localeCompare(b));
+    const T = {due:0, paid:0, unpaidN:0, dueN:0};
+    const rows = names.map(n=>{
+      const b = by[n];
+      const due = b.due.reduce((a,i)=>a+i.pay,0);
+      const paidItems = b.due.filter(i=>month.paid[i.key]);
+      const paid = paidItems.reduce((a,i)=>a+i.pay,0), unpaid = b.due.length - paidItems.length;
+      T.due+=due; T.paid+=paid; T.unpaidN+=unpaid; T.dueN+=b.due.length;
+      let html = `<tr>
+        <td class="src"><b>${esc(n)}</b><span>${esc(placeOf(n))} · 單堂 NT$${money(unitPriceOf(n))}</span>${modeSelect(n)}<div class="m-acts"><button class="btn small" data-pc-detail="${esc(n)}" aria-expanded="${pcDetail===n}">${pcDetail===n?'收起':'逐堂勾選'}</button></div></td>
+        <td class="r"><span class="big">${b.due.length}</span> <span class="small">堂</span>${b.later?`<div class="small">本月還排 ${b.later} 堂</div>`:''}</td>
+        <td class="r"><span class="big">${money(due)}</span></td>
+        <td class="r"><span class="big">${money(paid)}</span><div class="small">收 ${paidItems.length} 堂</div></td>
+        <td>${!b.due.length?'<span class="chip none">本月還沒上</span>':unpaid?`<span class="chip bad">${unpaid} 堂未收 · ${money(due-paid)}</span>`:'<span class="chip ok">都收齊了</span>'}</td>
+        <td class="ppact"><button class="btn small" data-pc-detail="${esc(n)}" aria-expanded="${pcDetail===n}">${pcDetail===n?'收起':'逐堂勾選'}</button></td>
+      </tr>`;
+      if(pcDetail===n){
+        const list = b.due.map(i=>`<li><label class="pccheck"><input type="checkbox" data-paid="${esc(i.key)}"${month.paid[i.key]?' checked':''}><span class="d">${Number(i.date.slice(5,7))}/${Number(i.date.slice(8,10))}</span><span class="t">${esc(i.time)} ${esc(i.content)}</span><span class="amt">NT$${money(i.pay)}</span><span class="st">${month.paid[i.key]?'已收':'未收'}</span></label></li>`).join('');
+        html += `<tr class="ppdetail-row"><td colspan="6">
+          ${b.due.length?`<ol class="pclist">${list}</ol>`:'<p class="note">這個月到目前還沒有上課。</p>'}
+          ${unpaid?`<div class="ppfoot"><span class="note">勾選代表那堂已經收到錢。也可以在「逐日記錄」按「收款」。</span><button class="btn small" data-pc-all="${esc(n)}">全部標為已收</button></div>`:''}
+        </td></tr>`;
+      }
+      return html;
+    }).join('');
+    return `<section class="recsec card" id="rec-perclass">
+      <div class="rechead"><h2>私教課 · 堂結</h2><span class="hint">每上一堂當場收一堂 · ${names.length} 位學生</span>
+        <span class="chip ${T.unpaidN?'bad':'ok'} recleft">${names.length?(T.unpaidN?`${T.unpaidN} 堂未收`:'都收齊了'):'目前沒有'}</span></div>
+      <div class="recstats">
+        <div><span class="lab">應收（算到${uptoText}）</span><span class="big">NT$ ${money(T.due)}</span><span class="small">${T.dueN} 堂</span></div>
+        <div><span class="lab">已收</span><span class="big">NT$ ${money(T.paid)}</span><span class="small">${T.dueN-T.unpaidN} 堂</span></div>
+        <div><span class="lab">未收</span><span class="big ${T.unpaidN?'neg':''}">NT$ ${money(T.due-T.paid)}</span><span class="small">${T.unpaidN} 堂</span></div>
+      </div>
+      ${names.length?`<div class="tablewrap"><table class="pctable">
+        <thead><tr><th>學生</th><th class="r">已上</th><th class="r">應收 NT$</th><th class="r">已收 NT$</th><th>狀態</th><th></th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`:''}
+    </section>`;
+  };
+
+  $('#view').innerHTML = `
+    <div class="toolbar"><span class="hint">團體課、私教月結：收到款項後填「實收」。私教預繳：學生買課時按「登記」，上課自動扣堂。私教堂結：每堂收到錢就勾「已收」。每位私教學生都可以用「付款」選單切換方式。</span></div>
+    <nav class="recnav card" id="recnav" aria-label="跳到對帳區塊"></nav>
+    ${invoiced({id:'rec-group', filter:s=>s.cat==='group', title:'團體課', sub:'按上課地點（付款單位）合計', col:'地點', unit:'個地點'})}
+    ${prepaidSection()}
+    ${perclassSection()}
+    ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}`;
+  // Section shortcuts, each showing that section's status chip
+  $('#recnav').innerHTML = [...document.querySelectorAll('.recsec')].map(sec=>{
+    const chip = sec.querySelector('.recleft');
+    return `<a class="recnav-item" href="#${sec.id}" data-jump="${sec.id}"><b>${esc(sec.querySelector('h2').textContent)}</b>${chip?`<span class="${chip.className.replace('recleft','')}">${esc(chip.textContent)}</span>`:''}</a>`;
+  }).join('');
+}
+
+function renderSched(){
+  const order = [1,2,3,4,5,6,0];
+  const active = schedule.filter(c=>!c.until || c.until>=TODAY);
+  const sorted = [...active].sort((a,b)=>order.indexOf(a.dow)-order.indexOf(b.dow) || a.time.localeCompare(b.time));
+  const perDay = order.map(d=>({d, sum:active.filter(c=>c.dow===d).reduce((s,c)=>s+(+c.pay||0),0)}));
+  const week = perDay.reduce((s,x)=>s+x.sum,0);
+  let last = null;
+  const rows = sorted.map(c=>{
+    const start = c.dow!==last; last=c.dow;
+    return `<tr class="${start?'dowstart':''}">
+      <td><select class="field w-dow" id="s-${c.id}-dow" data-id="${c.id}" data-f="dow">${order.map(d=>`<option value="${d}"${d===c.dow?' selected':''}>週${DOW[d]}</option>`).join('')}</select></td>
+      <td><input class="field w-time num" id="s-${c.id}-time" type="time" value="${esc(c.time)}" data-id="${c.id}" data-f="time"></td>
+      <td><input class="field w-dur num" id="s-${c.id}-dur" type="number" min="0" step="5" value="${c.dur}" data-id="${c.id}" data-f="dur"></td>
+      <td><input class="field" id="s-${c.id}-place" value="${esc(c.place)}" data-id="${c.id}" data-f="place"></td>
+      <td><input class="field" id="s-${c.id}-content" value="${esc(c.content)}" data-id="${c.id}" data-f="content"></td>
+      <td><input class="field w-pay num" id="s-${c.id}-pay" type="number" min="0" step="50" value="${c.pay}" data-id="${c.id}" data-f="pay"></td>
+      <td><button class="del" aria-label="刪除這堂課" title="從每週課表刪除" data-sdel="${c.id}">×</button></td>
+    </tr>`;
+  }).join('');
+  $('#view').innerHTML = `
+    <div class="toolbar"><div class="weekstrip">${perDay.map(x=>`<span>週${DOW[x.d]} <b>${money(x.sum)}</b></span>`).join('')}<span>一週 <b>NT$ ${money(week)}</b></span></div>
+      <button class="btn primary" id="addClass">＋ 新增固定課</button></div>
+    <p class="note" style="margin-top:8px">這是每個月自動展開的固定課表。在這裡新增、修改或刪除，只會影響今天以後的課，今天以前的帳不會變。以前某一天的課不一樣，請到「逐日記錄」那一天改金額、按停課或加臨時課。</p>
+    <div class="card tablewrap sched" style="margin-top:8px"><table>
+      <thead><tr><th>星期</th><th>時間</th><th>分鐘</th><th>地點</th><th>上課內容</th><th>薪水</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+
+/* ---------- events ---------- */
+let toastT;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,1800); }
+function shiftMonth(n){
+  const [y,m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m-1+n, 1);
+  const next = d.getFullYear()+'-'+pad(d.getMonth()+1);
+  if(next < START_MONTH) return;
+  monthKey = next; srTermId = null;   // 自營團課 follows the month again until a term is picked
+  addOpenFor=null; confirmBulk=false;
+  watchMonth();
+}
+$('#prevMonth').onclick = ()=>shiftMonth(-1);
+$('#nextMonth').onclick = ()=>shiftMonth(1);
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; render(); });
+
+document.addEventListener('click', e=>{
+  const pb = e.target.closest('[data-pp-add],[data-pp-edit],[data-pp-detail],[data-pp-on],[data-pp-off],[data-pp-del],[data-pp-delyes],[data-pp-delno],#pp-cancel,[data-pc-detail],[data-pc-all]');
+  if(pb){
+    const d = pb.dataset;
+    if(d.ppAdd!==undefined){ ppEditId = null; ppOpen = ppOpen===d.ppAdd ? null : d.ppAdd; render(); const f=$('#pp-count'); f&&f.focus(); return; }
+    if(d.ppEdit!==undefined){
+      const i = d.ppEdit.lastIndexOf('|'); const n = d.ppEdit.slice(0,i), id = d.ppEdit.slice(i+1); ppOpen = n; ppEditId = id; ppConfirmDel = null; render();
+      const f = document.querySelector('.ppform'); if(f){ f.scrollIntoView({block:'center'}); const c=$('#pp-count'); c&&c.focus(); }
+      return;
+    }
+    if(d.ppDetail!==undefined){ ppDetail = ppDetail===d.ppDetail ? null : d.ppDetail; ppConfirmDel=null; render(); return; }
+    if(pb.id==='pp-cancel'){ ppOpen = null; ppEditId = null; render(); return; }
+    if(d.pcDetail!==undefined){ pcDetail = pcDetail===d.pcDetail ? null : d.pcDetail; render(); return; }
+    if(d.pcAll!==undefined){
+      daysOfMonth().forEach(day=>{ if(day.ds>TODAY && monthKey>=TODAY.slice(0,7)) return; day.items.forEach(it=>{ if(it.status==='held' && isPrivate(it.content) && privName(it.content)===d.pcAll) month.paid[it.key]=true; }); });
+      saveMonth(); render(); toast(`${d.pcAll} 本月的課都標為已收`); return;
+    }
+    if(d.ppOn!==undefined){ const st = prepaid.students[d.ppOn] || (prepaid.students[d.ppOn] = {entries:[]}); st.on = true; savePrepaid(); ppOpen = d.ppOn; render(); toast(`${d.ppOn} 改成預繳，請登記購買或目前剩餘堂數`); return; }
+    if(d.ppOff!==undefined){ prepaid.students[d.ppOff].on = false; savePrepaid(); ppDetail = null; render(); toast(`${d.ppOff} 改回月結，登記紀錄會保留`); return; }
+    if(d.ppDel!==undefined){ ppConfirmDel = d.ppDel; render(); return; }
+    if(d.ppDelno!==undefined){ ppConfirmDel = null; render(); return; }
+    if(d.ppDelyes!==undefined){ const i = d.ppDelyes.lastIndexOf('|'); const n = d.ppDelyes.slice(0,i), id = d.ppDelyes.slice(i+1); const st = holder(n); st.entries = st.entries.filter(x=>x.id!==id); ppConfirmDel=null; saveHolder(n); render(); toast('已刪除這筆登記'); return; }
+  }
+  const t = e.target.closest('button,a[data-jump]'); if(!t) return;
+  if(t.dataset.sroff){
+    const i = t.dataset.sroff.lastIndexOf('|'), k = t.dataset.sroff.slice(0,i), off = t.dataset.sroff.slice(i+1)==='off';
+    const mk = k.slice(0,7), mo = moOf(mk), cid = k.slice(11), c = schedule.find(x=>x.id===cid) || {};
+    const e = {...(mo.entries[k]||{})};
+    e.snap = e.snap || {time:c.time, dur:c.dur, place:c.place, kind:c.kind, content:c.content, pay:c.pay};
+    if(off) e.s = 'off'; else delete e.s;
+    mo.entries[k] = e; if(srOpen===k) srOpen = null;
+    if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
+    render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，逐日記錄也標成停課':'恢復有開'}`); return;
+  }
+  if(t.dataset.srp){ srOpen = srOpen===t.dataset.srp ? null : t.dataset.srp; render(); return; }
+  if(t.dataset.srterm){ srTermId = t.dataset.srterm; srOpen = null; srTermDel = null; render(); return; }
+  if(t.dataset.srnew){ srNewOpen = !srNewOpen; render(); return; }
+  if(t.dataset.srtermdel){ srTermDel = t.dataset.srtermdel; render(); return; }
+  if(t.dataset.srtermdelno){ srTermDel = null; render(); return; }
+  if(t.dataset.srtermdelyes){
+    const tm = selfrun.terms.find(x=>x.id===t.dataset.srtermdelyes); if(!tm || selfrun.terms.length<2) return;
+    selfrun.terms = selfrun.terms.filter(x=>x!==tm); srTermDel = null; srTermId = null; srOpen = null;
+    saveSelfrun(); render(); toast(`已刪除${tm.name}`); return;
+  }
+  if(t.dataset.srmkdel){
+    const i = t.dataset.srmkdel.lastIndexOf('|'), k = t.dataset.srmkdel.slice(0,i), id = t.dataset.srmkdel.slice(i+1);
+    srEdit(k, a=>{ a.makeup = (a.makeup||[]).filter(x=>x!==id); }); render(); toast('已取消補課'); return;
+  }
+  if(t.dataset.srsgdel){
+    const i = t.dataset.srsgdel.lastIndexOf('|'), k = t.dataset.srsgdel.slice(0,i), idx = Number(t.dataset.srsgdel.slice(i+1));
+    srEdit(k, a=>{ (a.single||[]).splice(idx,1); }); render(); toast('已刪除這筆單堂'); return;
+  }
+  if(t.dataset.srdel){ srDel = srDel===t.dataset.srdel ? null : t.dataset.srdel; render(); return; }
+  if(t.dataset.srdelno){ srDel = null; render(); return; }
+  if(t.dataset.srdelyes){
+    const id = t.dataset.srdelyes, {t:tm, st} = stuOf(id); if(!st) return;
+    tm.students = tm.students.filter(x=>x.id!==id);
+    [...new Set(tm.dates.map(d=>d.slice(0,7)))].forEach(mk=>{
+      const mo = moOf(mk); let ch = false;
+      Object.entries(mo.att||{}).forEach(([k,a])=>{ if(!tm.dates.includes(k.slice(0,10))) return;
+        ['leave','makeup'].forEach(f=>{ if((a[f]||[]).includes(id)){ a[f] = a[f].filter(x=>x!==id); ch = true; } }); });
+      if(ch){ if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo); }
+    });
+    srDel = null; saveSelfrun(); render(); toast(`已刪除 ${st.name}`); return;
+  }
+  if(t.dataset.srdatedel){
+    const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(!tm) return;
+    const d = t.dataset.srdatedel;
+    if(tm.dates.length<=1){ toast('一期至少要有一個日期'); return; }
+    tm.dates = tm.dates.filter(x=>x!==d);
+    tm.students.forEach(st=>{ if(st.from===d) st.from = tm.dates.filter(x=>x>d).sort()[0] || tm.dates[0]; });
+    saveSelfrun(); render(); toast(`已刪除 ${md(d)}，每堂學費分攤已重算`); return;
+  }
+  if(t.dataset.paidbtn){ const k=t.dataset.paidbtn; if(month.paid[k]) delete month.paid[k]; else month.paid[k]=true; saveMonth(); render(); return; }
+  if(t.dataset.s){ const it = findItem(t.dataset.key); const cur = it?it.status:'held';
+    setStatus(t.dataset.key, (t.dataset.s==='off' && cur==='off') ? 'held' : t.dataset.s); return; }
+  if(t.dataset.del){ month.extras = month.extras.filter(x=>x.id!==t.dataset.del); saveMonth(); render(); toast('已刪除加課'); return; }
+  if(t.dataset.add){ addOpenFor=t.dataset.add; render(); const f=$('#ax-time'); f&&f.focus(); return; }
+  if(t.id==='ax-cancel'){ addOpenFor=null; render(); return; }
+  if(t.dataset.jump){
+    e.preventDefault();
+    const sec = document.getElementById(t.dataset.jump); if(!sec) return;
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    sec.scrollIntoView({behavior: smooth?'smooth':'auto', block:'start'});
+    sec.classList.remove('flash'); void sec.offsetWidth; sec.classList.add('flash');
+    return;
+  }
+  if(t.dataset.goto){
+    const d = document.getElementById('day-'+t.dataset.goto); if(!d) return;
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    d.scrollIntoView({behavior: smooth?'smooth':'auto', block:'start'});
+    d.classList.remove('flash'); void d.offsetWidth; d.classList.add('flash');
+    return;
+  }
+  if(t.id==='jumpToday'){ const d=document.getElementById('day-'+TODAY); d&&d.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(t.id==='bulkAsk'){ confirmBulk=true; render(); return; }
+  if(t.id==='bulkNo'){ confirmBulk=false; render(); return; }
+  if(t.id==='bulkYes'){
+    let n=0;
+    daysOfMonth().filter(d=>d.ds<=TODAY).forEach(d=>d.items.forEach(it=>{
+      if(it.status==='none' && !it.extra){ month.entries[it.key] = {...(month.entries[it.key]||{}), s:'held',
+        snap:{time:it.time,dur:it.dur,place:it.place,kind:it.kind,content:it.content,pay:it.base}}; n++; }
+    }));
+    confirmBulk=false; saveMonth(); render(); toast(`已標記 ${n} 堂為有開`); return;
+  }
+  if(t.id==='addClass'){
+    const id = 'c'+Date.now().toString(36);
+    schedule.push({id, dow:1, time:'12:00', dur:60, place:'', kind:'', content:'', pay:0, from:TODAY});
+    saveSchedule(); render(); const f=document.getElementById('s-'+id+'-place'); f&&f.focus(); return;
+  }
+  if(t.dataset.sdel){
+    const c = schedule.find(c=>c.id===t.dataset.sdel); if(!c) return;
+    const y = new Date(); y.setDate(y.getDate()-1); const yesterday = ymd(y);
+    if(c.from && c.from > yesterday) schedule = schedule.filter(x=>x.id!==c.id);   // added today: remove outright
+    else c.until = yesterday;                                                       // keep it on past days
+    saveSchedule(); render(); toast('已從每週課表刪除，今天以前的帳不受影響'); return;
+  }
+});
+
+document.addEventListener('change', e=>{
+  const el = e.target;
+  if(el.dataset.modeFor!==undefined){
+    const n = el.dataset.modeFor, m = el.value;
+    setMode(n, m);
+    if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
+    render(); toast(`${n} 改成${MODES[m]}`); return;
+  }
+  if(el.dataset.srlv!==undefined){
+    const i = el.dataset.srlv.lastIndexOf('|'), k = el.dataset.srlv.slice(0,i), id = el.dataset.srlv.slice(i+1);
+    srEdit(k, a=>{ a.leave = (a.leave||[]).filter(x=>x!==id); if(!el.checked) a.leave.push(id); }); render(); return;
+  }
+  if(el.dataset.srpkg!==undefined){
+    const {t:tm, st} = stuOf(el.dataset.srpkg); if(!st) return;
+    if((st.fee||0)===pkgPrice(st.pkg, tm)) st.fee = pkgPrice(el.value, tm);   // fee still the list price → follow the new package
+    st.pkg = el.value; saveSelfrun(); render(); toast(`${st.name} 改成${pkgName(st.pkg, tm)}，學費 NT$${money(st.fee)}`); return;
+  }
+  if(el.dataset.srfee!==undefined){ const {st} = stuOf(el.dataset.srfee); if(!st) return; st.fee = Math.max(0, Math.round(Number(el.value)||0)); saveSelfrun(); render(); return; }
+  if(el.dataset.srpaid!==undefined){ const {st} = stuOf(el.dataset.srpaid); if(!st) return; st.paid = el.value || ''; saveSelfrun(); render(); return; }
+  if(el.dataset.srset!==undefined){
+    const k = el.dataset.srset, v = Math.max(0, Math.round(Number(el.value)||0));
+    const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(!tm) return;
+    if(k==='one' || k==='both') (tm.price = tm.price || {})[k] = v; else tm[k] = v;
+    saveSelfrun(); render(); return;
+  }
+  if(el.name==='p' && el.form && el.form.classList.contains('sradd')){ const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(tm) el.form.elements.f.value = pkgPrice(el.value, tm); return; }
+  if(el.dataset.paid!==undefined){ const k=el.dataset.paid; if(el.checked) month.paid[k]=true; else delete month.paid[k]; saveMonth(); render(); return; }
+  if(el.id==='pp-type'){
+    const buy = el.value==='buy';
+    $('#pp-amount-wrap').hidden = !buy; $('#pp-amount').required = buy;
+    const lab = $('#pp-count-lab'); lab.textContent = (buy ? '買幾' : '剩幾') + (lab.dataset.u||'堂');
+    $('#pp-note').textContent = buy ? '購買：從這天開始上的課會扣這包。' : '目前剩餘：這天（含）以前的課視為已扣完，從隔天起的課才會扣。';
+    return;
+  }
+  if(el.id==='ax-pick'){
+    const o = pickOptions()[Number(el.value)]; if(!o) return;
+    const c = o.c, set = (id,v) => { const f=document.getElementById(id); if(f) f.value = v ?? ''; };
+    set('ax-time', c.time); set('ax-dur', c.dur); set('ax-content', c.content); set('ax-place', c.place); set('ax-pay', c.pay);
+    return;
+  }
+  if(el.classList.contains('payin')){ setPay(el.dataset.key, el.value); return; }
+  if(el.classList.contains('minsin')){ setMins(el.dataset.key, el.value); return; }
+  if(el.dataset.rateFor!==undefined){ const n=el.dataset.rateFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.rate=Math.max(0,Math.round(Number(el.value)||0)); savePrepaid(); render(); toast(`${n} 每小時收費改成 NT$${money(st.rate)}`); return; }
+  if(el.dataset.unitFor!==undefined){ const n=el.dataset.unitFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.unit=el.value; savePrepaid(); render(); toast(`${n} 改成${el.value==='time'?'按時間扣（小時）':'按堂數扣'}`); return; }
+  if(el.classList.contains('recv')){
+    const v = el.value.trim();
+    if(v==='') delete month.received[el.dataset.src]; else month.received[el.dataset.src] = Math.round(Number(v)||0);
+    saveMonth(); render(); return;
+  }
+  if(el.dataset.f && el.dataset.id){
+    const c = schedule.find(c=>c.id===el.dataset.id); if(!c) return;
+    const f = el.dataset.f;
+    if(f==='dow'){
+      // Moving a class to another weekday: end the old one yesterday and start a copy today
+      const nd = Math.round(Number(el.value)||0); if(nd===c.dow) return;
+      const y = new Date(); y.setDate(y.getDate()-1); const yesterday = ymd(y);
+      if(c.from && c.from > yesterday) c.dow = nd;
+      else { c.until = yesterday; const n = {...c, id:'c'+Date.now().toString(36), dow:nd, from:TODAY}; delete n.until; schedule.push(n); }
+      saveSchedule(); render(); return;
+    }
+    freezePast(c.id);
+    c[f] = (f==='dow'||f==='dur'||f==='pay') ? Math.round(Number(el.value)||0) : el.value;
+    saveSchedule(); render();
+  }
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Enter' && (e.target.classList.contains('payin')||e.target.classList.contains('recv'))) e.target.blur();
+});
+document.addEventListener('input', e=>{
+  // keep the amount in step with the number of classes until the user types their own amount
+  if(e.target.id==='pp-count'){ const a=$('#pp-amount'); if(a && !a.dataset.touched) a.value = Math.round((Number(e.target.value)||0) * Number(e.target.dataset.unit||0)); }
+  if(e.target.id==='pp-amount') e.target.dataset.touched = '1';
+});
+document.addEventListener('submit', e=>{
+  e.preventDefault();
+  const f = e.target;
+  if(f.classList.contains('ppform')){
+    const n = f.dataset.name, type = $('#pp-type').value, date = $('#pp-date').value;
+    const count = Math.max(0, Math.round((Number($('#pp-count').value)||0)*100)/100);
+    if(!date){ toast('請選日期'); return; }
+    const editId = f.dataset.editId || null;
+    const entry = {id: editId || 'p'+Date.now().toString(36), type, date, count};
+    if(type==='buy') entry.amount = Math.max(0, Math.round(Number($('#pp-amount').value)||0));
+    const st = holder(n);
+    if(editId && (st.entries||[]).some(x=>x.id===editId)) st.entries = st.entries.map(x=>x.id===editId ? entry : x);   // correct in place
+    else st.entries = [...(st.entries||[]), entry];
+    ppOpen = null; ppEditId = null; ppDetail = n; saveHolder(n); render();
+    const nm = nameOf(n);
+    toast(editId ? `已修正 ${nm} 的登記` : (type==='buy' ? `已登記 ${nm} 購買 ${count} ${unitWord(n)}` : `已登記 ${nm} 目前剩 ${count} ${unitWord(n)}`));
+    return;
+  }
+  if(f.classList.contains('srmk')){
+    const k = f.dataset.key, id = f.elements.s.value; if(!id) return;
+    srEdit(k, a=>{ a.makeup = (a.makeup||[]).filter(x=>x!==id); a.makeup.push(id); });
+    render(); toast(`已登記 ${(stuOf(id).st||{}).name||''} ${md(k.slice(0,10))} 補課`); return;
+  }
+  if(f.classList.contains('srsg') || f.classList.contains('srsg2')){
+    const k = f.dataset.key || f.elements.k.value; if(!k) return;
+    const entry = {name:f.elements.n.value.trim(), amount:Math.max(0, Math.round(Number(f.elements.a.value)||0))};
+    srEdit(k, a=>{ (a.single = a.single || []).push(entry); });
+    render(); toast(`已加入 ${md(k.slice(0,10))} ${srShort(k.slice(11))} 單堂${entry.name?' · '+entry.name:''}`); return;
+  }
+  if(f.classList.contains('sradd')){
+    const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(!tm) return;
+    const el = f.elements, name = el.n.value.trim(); if(!name) return;
+    if(tm.students.some(st=>st.name===name)){ toast(`${name} 已經在名單上了`); return; }
+    tm.students.push({id:'s'+Date.now().toString(36), name, pkg:el.p.value, fee:Math.max(0, Math.round(Number(el.f.value)||0)), paid:el.d.value || TODAY, from:el.s.value || tm.dates[0]});
+    saveSelfrun(); render(); toast(`已新增 ${name}`); return;
+  }
+  if(f.classList.contains('srnew')){
+    const el = f.elements, n = Math.max(1, Math.min(30, Math.round(Number(el.n.value)||0)));
+    const dates = []; const x = new Date(el.first.value+'T00:00:00');
+    for(let i=0;i<n;i++){ dates.push(ymd(x)); x.setDate(x.getDate()+7); }
+    const clash = dates.find(d=>termOf(d)); if(clash){ toast(`${md(clash)} 已經是${termOf(clash).name}的日期，請換第一堂日期`); return; }
+    const last = selfrun.terms[selfrun.terms.length-1];
+    const num = k => Math.max(0, Math.round(Number(el[k].value)||0));
+    const tm = {id:'t'+Date.now().toString(36), name:el.name.value.trim() || '新的一期', dates, price:{one:num('one'), both:num('both')}, single:num('single'), venue:num('venue'), students:[]};
+    if(el.copy && el.copy.checked && last) tm.students = last.students.map((st,i)=>({id:'s'+Date.now().toString(36)+i, name:st.name, pkg:st.pkg, fee:pkgPrice(st.pkg, tm), paid:'', from:dates[0]}));
+    selfrun.terms.push(tm); srTermId = tm.id; srNewOpen = false; srOpen = null;
+    saveSelfrun(); render(); toast(`已建立${tm.name}：${md(dates[0])} 起 ${n} 堂`); return;
+  }
+  if(f.classList.contains('srdate')){
+    const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(!tm) return;
+    const d = f.elements.d.value; if(!d) return;
+    if(tm.dates.includes(d)){ toast('這天已經在日期裡了'); return; }
+    const other = termOf(d); if(other){ toast(`這天已經是${other.name}的日期`); return; }
+    const first = tm.dates.slice().sort()[0];
+    if(first && d < first) tm.students.forEach(st=>{ if(!st.from || st.from===first) st.from = d; });   // new first date: students who started at the beginning start here
+    tm.dates = [...tm.dates, d].sort(); saveSelfrun(); render(); toast(`已加入 ${md(d)}，每堂學費分攤已重算`); return;
+  }
+  if(!f.classList.contains('addform')) return;
+  const v = id => document.getElementById(id).value.trim();
+  month.extras.push({id:'x'+Date.now().toString(36), date:f.dataset.date, time:v('ax-time'), dur:Math.round(Number(v('ax-dur'))||60),
+    content:v('ax-content'), place:v('ax-place'), kind:'', pay:Math.round(Number(v('ax-pay'))||0), s:'held'});
+  addOpenFor=null; saveMonth(); render(); toast('已加入，並標為有開');
+});
+
+/* ---------- boot ---------- */
+// Bring whatever is stored up to the current schedule version (nothing is built in, so a missing schedule stays empty)
+function upgradeStored(){
+  const sc = lsGet('config/schedule');
+  if(sc && Array.isArray(sc.classes)){
+    schedule = sc.classes;
+    if((sc.v||1) < SCHEDULE_VERSION) lsSet('config/schedule', {classes: schedule, v: SCHEDULE_VERSION});
+  } else schedule = [];
+}
+upgradeStored();
+loadPrepaid();
+loadSelfrun();
+month = normMonth(lsGet(monthPath()) || emptyMonth());
+render(); refreshSaveState();
+const closeMenu = () => { $('#moreMenu').open = false; };
+$('#exportBtn').onclick = () => { closeMenu(); exportBackup(); };
+$('#importBtn').onclick = () => { closeMenu(); $('#importFile').click(); };
+$('#importFile').onchange = e=>{ const f=e.target.files[0]; if(f) importBackup(f); e.target.value=''; };
+$('#driveBtn').onclick = () => {
+  if(drive.connected && tokenValid() && drive.error){ drive.error = null; pushNow(); return; }
+  drive.lastAutoAsk = Date.now(); askAuth(null, drive.connected);
+};
+$('#driveRestoreBtn').onclick = () => { closeMenu(); restoreFromDrive(); };
+$('#driveFolderBtn').onclick = () => { closeMenu(); if(drive.folderId) window.open('https://drive.google.com/drive/folders/'+drive.folderId, '_blank', 'noopener'); };
+$('#syncNowBtn').onclick = () => manualSync();
+$('#driveOffBtn').onclick = () => { closeMenu(); disconnectDrive(); };
+document.addEventListener('click', e => { if(!e.target.closest('#moreMenu')) closeMenu(); });
+// When the 1-hour Google sign-in has lapsed, a tap that changes a record quietly renews it
+document.addEventListener('click', e => {
+  if(!DRIVE_ON || !drive.connected || !(drive.dirty || drive.needCheck) || tokenValid() || !drive.client) return;
+  if(e.target.closest('#driveBtn,#moreMenu,#syncNowBtn')) return;
+  if(Date.now() - drive.lastAutoAsk < 5*60*1000) return;
+  drive.lastAutoAsk = Date.now();
+  askAuth(null, true);
+});
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState==='hidden'){ if(drive.dirty && tokenValid() && !drive.conflict) pushNow(); }
+  else if(Date.now() - drive.lastCheck > 15000) syncCheck();   // back to this app: look for another device's changes
+});
+window.addEventListener('focus', () => { if(Date.now() - drive.lastCheck > 15000) syncCheck(); });
+$('#useRemote').onclick = () => { const c = drive.conflict; if(!c) return; drive.conflict = null; pullRemote(c.remote, c.meta); renderConflict(); refreshSaveState(); toast('已改用雲端硬碟的資料'); };
+$('#useLocal').onclick = () => { if(!drive.conflict) return; drive.conflict = null; drive.forcePush = true; drive.dirty = true; renderConflict(); pushNow(); toast('已用這台的資料覆蓋雲端硬碟'); };
+window.addEventListener('online', () => { drive.offline = false; if(drive.dirty) pushNow(); else refreshSaveState(); });
+// Floating "back to top" button, shown once the page has scrolled well past the header
+const toTop = $('#toTop');
+const syncToTop = () => { const on = window.scrollY > 600; toTop.classList.toggle('show', on); toTop.tabIndex = on ? 0 : -1; };
+window.addEventListener('scroll', syncToTop, {passive:true});
+toTop.onclick = () => {
+  const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  window.scrollTo({top:0, behavior: smooth ? 'smooth' : 'auto'});
+};
+syncToTop();
+initGoogle();
+refreshSaveState();
+if(drive.connected){ if(tokenValid()) syncCheck(); else { drive.needCheck = true; refreshSaveState(); } }
+setInterval(refreshSaveState, 60*1000);
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+})();
+</script>
+</body>
+</html>
