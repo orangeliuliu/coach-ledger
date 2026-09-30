@@ -1477,11 +1477,11 @@ function srPanel(key){
     <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，逐日記錄也會變停課">這堂停課</button></span></div>
     <div class="attgrid">${s.enrolled.map(st=>{ const lv = s.leave.includes(st.id);
       return `<label class="attm${lv?' leave':''}"><input type="checkbox" data-srlv="${esc(key)}|${st.id}"${lv?'':' checked'}>${esc(st.name)}${lv?'<small>請假</small>':''}</label>`; }).join('') || '<span class="hint">這堂沒有期課學員</span>'}</div>
-    <div class="atthead"><b>補課</b><span class="hint">請假的學員來這堂補，或名單外的人來補課（都不另收費）</span></div>
+    <div class="atthead"><b>補課</b><span class="hint">請假的學員來這堂補，或名單外的人代替請假的學員來（都不另收費）</span></div>
     <div class="attgrid">${s.makeup.map(id=>`<span class="sgchip">${esc(nm(id))}<button class="sgx" aria-label="取消 ${esc(nm(id))} 的補課" data-srmkdel="${esc(key)}|${id}">×</button></span>`).join('')}${s.guest.map((g,i)=>`<span class="sgchip guest">${esc(g.name)}${g.for&&stuOf(g.for).st?`<small>代 ${esc(nm(g.for))}${g.forKey?` ${md(g.forKey.slice(0,10))} ${esc(srShort(g.forKey.slice(11)))}`:''}</small>`:''}${g.note?`<small>${esc(g.note)}</small>`:''}<button class="sgx" aria-label="取消 ${esc(g.name)} 的補課" data-srgsdel="${esc(key)}|${i}">×</button></span>`).join('')}
       <form class="srmk inline" data-key="${esc(key)}"><select class="field" name="s" required aria-label="補課學員"><option value="">選學員…</option>${cands.length?`<optgroup label="${esc(t.name)}學員">${cands.map(st=>`<option value="${st.id}">${esc(st.name)}${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</optgroup>`:''}${prev.length?`<optgroup label="之前的期數，還沒補完">${prev.map(x=>`<option value="${x.st.id}">${esc(x.st.name)}（${esc(x.pt.name)}待補 ${x.owed}）</option>`).join('')}</optgroup>`:''}</select><button class="btn small" type="submit">＋ 補課</button></form></div>
-    <div class="attgrid srguestrow"><span class="hint">名單外的人（可以代替請假的學員）：</span>
-      <form class="srgs inline" data-key="${esc(key)}"><input class="field" name="n" placeholder="名字" required autocomplete="off" list="dl-srg-${esc(key)}" aria-label="名單外補課的名字"><select class="field" name="for" aria-label="幫誰補"><option value="">不是幫誰補</option><optgroup label="幫${esc(t.name)}學員補">${t.students.slice().sort((a,b)=>(tally[b.id].owed - tally[a.id].owed) || a.name.localeCompare(b.name,'zh-Hant')).map(st=>`<option value="${st.id}" data-when="${esc(JSON.stringify(srWhenOpts(t, st, key)))}">幫 ${esc(st.name)} 補${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</optgroup>${prev.length?`<optgroup label="幫之前期數的學員補">${prev.map(x=>`<option value="${x.st.id}" data-when="${esc(JSON.stringify(srWhenOpts(x.pt, x.st, key)))}">幫 ${esc(x.st.name)} 補（${esc(x.pt.name)}待補 ${x.owed}）</option>`).join('')}</optgroup>`:''}</select><select class="field" name="when" hidden aria-label="代替哪一堂"></select><input class="field" name="note" placeholder="備註（可不填）" autocomplete="off" aria-label="備註"><button class="btn small" type="submit">＋ 名單外補課</button>
+    <div class="attgrid srguestrow"><span class="hint">代補（名單外的人代替學員來上）：</span>
+      <form class="srgs inline" data-key="${esc(key)}"><input class="field" name="n" placeholder="名字" required autocomplete="off" list="dl-srg-${esc(key)}" aria-label="代補的人的名字"><select class="field" name="for" required aria-label="幫誰補"><option value="">幫誰補…</option><optgroup label="幫${esc(t.name)}學員補">${t.students.slice().sort((a,b)=>(tally[b.id].owed - tally[a.id].owed) || a.name.localeCompare(b.name,'zh-Hant')).map(st=>`<option value="${st.id}" data-when="${esc(JSON.stringify(srWhenOpts(t, st, key)))}">幫 ${esc(st.name)} 補${tally[st.id].owed?`（待補 ${tally[st.id].owed}）`:''}</option>`).join('')}</optgroup>${prev.length?`<optgroup label="幫之前期數的學員補">${prev.map(x=>`<option value="${x.st.id}" data-when="${esc(JSON.stringify(srWhenOpts(x.pt, x.st, key)))}">幫 ${esc(x.st.name)} 補（${esc(x.pt.name)}待補 ${x.owed}）</option>`).join('')}</optgroup>`:''}</select><select class="field" name="when" hidden aria-label="代替哪一堂"></select><button class="btn small" type="submit">＋ 代補</button>
       <datalist id="dl-srg-${esc(key)}">${gnames.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></form></div>
     <div class="atthead"><b>單堂報名</b><span class="hint">這次來、這次付</span></div>
     <div class="attgrid">${s.single.map((x,i)=>`<span class="sgchip">${esc(x.name||'（沒寫名字）')} · NT$${money(x.amount)}<button class="sgx" aria-label="刪除這筆單堂" data-srsgdel="${esc(key)}|${i}">×</button></span>`).join('')}
@@ -1601,7 +1601,7 @@ function renderSelf(){
       <a class="recnav-item" href="#sr-sess" data-jump="sr-sess"><b>場次點名</b><span class="chip ok">${held.length} 堂</span></a>
       <a class="recnav-item" href="#sr-stu" data-jump="sr-stu"><b>學員</b><span class="chip ${owedN||unpaid.length?'wait':'ok'}">${t.students.length} 位${unpaid.length?` · ${unpaid.length} 位未繳`:''}${owedN?` · ${owedN} 位待補課`:''}</span></a>
       <a class="recnav-item" href="#sr-single" data-jump="sr-single"><b>單堂報名</b><span class="chip ok">${singleN} 次</span></a>
-      <a class="recnav-item" href="#sr-guest" data-jump="sr-guest"><b>名單外補課</b><span class="chip ok">${sessions.reduce((a,x)=>a+x.guest.length,0)} 次</span></a>
+      <a class="recnav-item" href="#sr-guest" data-jump="sr-guest"><b>代補</b><span class="chip ok">${sessions.reduce((a,x)=>a+x.guest.length,0)} 次</span></a>
     </nav>
     <section class="recsec card srsec">
       <div class="rechead"><h3>${esc(t.name)} · ${md(dates[0])}–${md(dates[dates.length-1])}</h3><span class="hint">${esc((schedule.find(c=>c.id===selfrun.cids[0])||{}).place||'')}</span></div>
@@ -1641,9 +1641,9 @@ function renderSelf(){
       </div>
     </section>
     <section class="recsec card srsec" id="sr-guest">
-      <div class="rechead"><h3>名單外補課</h3><span class="hint">不在${esc(t.name)}名單上的人來補課，不收費 · ${guestN} 次</span></div>
+      <div class="rechead"><h3>代補</h3><span class="hint">名單外的人代替請假的學員來上，不收費 · ${guestN} 次</span></div>
       <div class="dropblock">
-        ${gList?`<ul class="dropgroups">${gList}</ul>`:'<p class="hint" style="margin:0">還沒有。在場次點名的格子裡「名單外的人」新增。</p>'}
+        ${gList?`<ul class="dropgroups">${gList}</ul>`:'<p class="hint" style="margin:0">還沒有。在場次點名的格子裡「代補」新增。</p>'}
       </div>
     </section>
 `;
@@ -1908,7 +1908,7 @@ document.addEventListener('click', e=>{
     const i = t.dataset.srgsdel.lastIndexOf('|'), k = t.dataset.srgsdel.slice(0,i), idx = Number(t.dataset.srgsdel.slice(i+1));
     let g = null; srEdit(k, a=>{ g = (a.guest||[]).splice(idx,1)[0]; });
     if(g && g.auto && g.forKey) srEdit(g.forKey, a=>{ a.leave = (a.leave||[]).filter(x=>x!==g.for); });   // the leave came with it
-    render(); toast(g && g.auto ? '已刪除這筆名單外補課，連帶登記的請假也取消了' : '已刪除這筆名單外補課'); return;
+    render(); toast(g && g.auto ? '已刪除這筆代補，連帶登記的請假也取消了' : '已刪除這筆代補'); return;
   }
   if(t.dataset.srsgdel){
     const i = t.dataset.srsgdel.lastIndexOf('|'), k = t.dataset.srsgdel.slice(0,i), idx = Number(t.dataset.srsgdel.slice(i+1));
@@ -2086,16 +2086,17 @@ document.addEventListener('submit', e=>{
   }
   if(f.classList.contains('srgs')){
     const k = f.dataset.key, name = f.elements.n.value.trim(); if(!name) return;
-    const g = {name}; const note = f.elements.note.value.trim(); if(note) g.note = note;
+    const g = {name};
     const who = f.elements.for.value, when = f.elements.when.value;
-    if(who && !when){ toast('請選代替哪一堂的假'); return; }
+    if(!who){ toast('請選幫誰補'); return; }
+    if(!when){ toast('請選代替哪一堂的假'); return; }
     if(who){ g.for = who; g.forKey = when;
       // the covered session gets the leave too, so both sides line up
       let added = false;
       srEdit(when, a=>{ a.leave = a.leave || []; if(!a.leave.includes(who)){ a.leave.push(who); added = true; } });
       if(added) g.auto = true; }
     srEdit(k, a=>{ (a.guest = a.guest || []).push(g); });
-    render(); toast(`已登記 ${name} ${md(k.slice(0,10))} 補課${who?`，代 ${(stuOf(who).st||{}).name||''} ${md(when.slice(0,10))} ${srShort(when.slice(11))} 的假${g.auto?'（已一併登記請假）':''}`:'（名單外）'}`); return;
+    render(); toast(`已登記 ${name} ${md(k.slice(0,10))} 代補 ${(stuOf(who).st||{}).name||''} ${md(when.slice(0,10))} ${srShort(when.slice(11))} 的假${g.auto?'（已一併登記請假）':''}`); return;
   }
   if(f.classList.contains('srsg') || f.classList.contains('srsg2')){
     const k = f.dataset.key || f.elements.k.value; if(!k) return;
