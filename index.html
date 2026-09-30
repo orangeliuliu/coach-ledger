@@ -98,6 +98,11 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.finhead{margin-top:12px;padding:16px;display:flex;flex-direction:column;gap:4px;border-color:var(--wait);background:var(--wait-soft)}
+.finhead .lab{font-size:13px;color:var(--muted);font-weight:600}
+.finhead .val{font-family:var(--num);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
+.finhead .val .cur{font-size:16px;margin-right:4px;color:var(--muted)}
+.finhead .sub{font-size:13px;color:var(--muted)}
 @media (max-width:600px){.finsec .recstats .big{font-size:20px}}
 .finmsg{margin:0 16px;padding:10px 12px;border-radius:10px;display:flex;flex-direction:column;gap:2px;font-size:14px}
 .finmsg span{font-size:13px;color:var(--muted)}
@@ -1695,88 +1700,80 @@ function renderSelf(){
     </section>
 `;
 }
-/* ---------- 財務: 收到的錢 vs 已經賺到的錢 (預收的學費要等上完課才算賺到) ---------- */
-// For one month: cash in, money earned, and what is still owed to students (prepaid but not yet taught) at month end.
-// Group classes, 月結 and 堂結 private classes count as paid in the month they are taught.
-function finMonth(mk){
+/* ---------- 財務: 要留著的錢 (已經收了錢、還沒上的課), by 自營團課 and 私教課 ---------- */
+// For one month: what came in, what was taught, and what is still owed at `asOf` (default: month end).
+// 私教課 covers every private student; only 預繳 students can leave something owed.
+function finMonth(mk, asOf){
   const mo = moOf(mk), days = daysOfMonth(mk, mo);
-  const [y,m] = mk.split('-').map(Number), end = ymd(new Date(y, m, 0));
-  let earned = 0, ppEarned = 0, srFee = 0;
+  const [y,m] = mk.split('-').map(Number), end = asOf || ymd(new Date(y, m, 0));
+  const sr = {cash:0, used:0, def:0}, pv = {cash:0, used:0, def:0, buys:0};
   days.forEach(d=>d.items.forEach(it=>{
     if(it.status!=='held') return;
-    earned += it.pay;
-    if(it.sr) srFee += Math.min(it.sr.fees, it.pay + (it.sr.t.venue||0));                  // 期課學費 portion of the session
-    else if(isPrivate(it.content) && isPrepaid(privName(it.content))) ppEarned += it.pay;  // taught from a prepaid package
+    if(it.sr) sr.used += Math.min(it.sr.fees, it.pay + (it.sr.t.venue||0));   // 期課學費 part of the session
+    else if(isPrivate(it.content)){
+      pv.used += it.pay;
+      if(!isPrepaid(privName(it.content))) pv.cash += it.pay;                  // 月結 / 堂結: paid for as taught
+    }
   }));
-  let ppBuys = 0;
-  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk) ppBuys += e.amount||0; }); });
-  let srPaid = 0;
-  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk) srPaid += st.fee||0; }));
-  const cash = earned - ppEarned - srFee + ppBuys + srPaid;
-  // still owed at month end
+  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk) sr.cash += st.fee||0; }));
+  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk) pv.buys += e.amount||0; }); });
+  pv.cash += pv.buys;
+  // still owed
   const classes = heldPrivateClasses(end);
-  let ppDef = 0;
   Object.keys(prepaid.students).filter(isPrepaid).forEach(n=>{
     const l = ledgerOf(n, classes[n], end);
-    if(l.started && l.balance>0) ppDef += l.balance * (unitOf(n)==='time' ? hourlyRateOf(n) : unitPriceOf(n));
+    if(l.started && l.balance>0) pv.def += l.balance * (unitOf(n)==='time' ? hourlyRateOf(n) : unitPriceOf(n));
   });
-  let srDef = 0;
   (selfrun.terms||[]).forEach(t=>{
     const off = srOffSet(t);
     termSessions(t).forEach(s=>{
       if(s.ds<=end || s.status!=='held') return;
-      s.enrolled.forEach(st=>{ if(st.paid && st.paid<=end) srDef += shareOf(t, st, off); });
+      s.enrolled.forEach(st=>{ if(st.paid && st.paid<=end) sr.def += shareOf(t, st, off); });
     });
   });
-  return {mk, earned:Math.round(earned), cash:Math.round(cash), ppEarned:Math.round(ppEarned), srFee:Math.round(srFee),
-    ppBuys, srPaid, ppDef:Math.round(ppDef), srDef:Math.round(srDef), def:Math.round(ppDef+srDef)};
+  [sr,pv].forEach(o=>Object.keys(o).forEach(k=>o[k] = Math.round(o[k])));
+  return {mk, sr, pv, def: sr.def + pv.def};
 }
 const nextMk = mk => { let [y,m] = mk.split('-').map(Number); m++; if(m>12){ m=1; y++; } return y+'-'+pad(m); };
 const mLabel = mk => `${Number(mk.slice(5,7))} 月`;
 function renderFin(){
-  const f = finMonth(monthKey), diff = f.cash - f.earned;
-  const n = finMonth(nextMk(monthKey));
-  const isFuture = monthKey > TODAY.slice(0,7), isNow = monthKey === TODAY.slice(0,7);
-  // every month from the start of the ledger to next month
-  const last = nextMk(TODAY.slice(0,7) > monthKey ? TODAY.slice(0,7) : monthKey);
-  const hist = []; for(let mk = START_MONTH; mk <= last; mk = nextMk(mk)) hist.push(finMonth(mk));
-  const msg = diff > 0
-    ? `<div class="finmsg warn"><b>這個月多收了 NT$ ${money(diff)}</b><span>這是學生預繳、之後幾個月才要上的課的錢，建議先存起來，不要當成這個月的收入花掉。</span></div>`
-    : diff < 0
-    ? `<div class="finmsg info"><b>這個月用到之前預收的 NT$ ${money(-diff)}</b><span>這個月上的課有一部分是之前就收過錢的，所以實際入帳比賺到的少，是正常的。${f.ppEarned+f.srFee?'之前存起來的預收款可以轉出來用。':''}</span></div>`
-    : `<div class="finmsg ok"><b>收到的錢 = 賺到的錢</b><span>這個月沒有預收，也沒有用到之前的預收款。</span></div>`;
-  const rows = hist.map(h=>{
-    const d = h.cash - h.earned, fut = h.mk > TODAY.slice(0,7);
-    return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===TODAY.slice(0,7)?'<small>本月</small>':''}</td>
-      <td class="r">${money(h.cash)}</td><td class="r">${money(h.earned)}</td>
-      <td class="r ${d>0?'plus':d<0?'minus':''}">${d>0?'+':d<0?'−':''}${money(Math.abs(d))}</td><td class="r">${money(h.def)}</td></tr>`;
-  }).join('');
-  $('#view').innerHTML = `
-    <div class="toolbar"><span class="hint">學生預繳的錢會一次進來，但課要之後才上完。這頁把「收到的錢」和「已經賺到的錢」分開，避免預收款被當成這個月的收入花掉。</span></div>
-    <section class="recsec card finsec">
-      <div class="rechead"><h2>${mLabel(monthKey)}${isFuture?'（預估）':isNow?'（到月底，含還沒上的課）':''}</h2></div>
+  const nowMk = TODAY.slice(0,7), isNow = monthKey===nowMk, isFuture = monthKey > nowMk;
+  const f = finMonth(monthKey);                       // the month as a whole (up to its last day)
+  const head = isNow ? finMonth(monthKey, TODAY) : f;  // this month: what is owed as of today
+  const block = (title, o, extra) => {
+    const d = o.cash - o.used;
+    const msg = d > 0 ? `<div class="finmsg warn"><b>多收了 NT$ ${money(d)}</b><span>是之後的課的錢，先存起來。</span></div>`
+      : d < 0 ? `<div class="finmsg info"><b>用掉之前預收的 NT$ ${money(-d)}</b><span>這個月上的課有一部分之前就收過錢，可以從存起來的錢轉出來。</span></div>` : '';
+    return `<section class="recsec card finsec">
+      <div class="rechead"><h2>${title}</h2></div>
       <div class="recstats">
-        <div><span class="lab">實際入帳</span><span class="big">NT$ ${money(f.cash)}</span><span class="small">含預繳 ${money(f.ppBuys + f.srPaid)}（私教 ${money(f.ppBuys)}、自營團課 ${money(f.srPaid)}）</span></div>
-        <div><span class="lab">已經賺到</span><span class="big">NT$ ${money(f.earned)}</span><span class="small">這個月上完的課（同最上方本月上課總額）</span></div>
-        <div><span class="lab">月底還欠學生的課</span><span class="big">NT$ ${money(f.def)}</span><span class="small">已收錢、還沒上：私教預繳 ${money(f.ppDef)}、自營團課 ${money(f.srDef)}</span></div>
+        <div><span class="lab">本月收到</span><span class="big">NT$ ${money(o.cash)}</span><span class="small">${extra.cash}</span></div>
+        <div><span class="lab">本月上課</span><span class="big">NT$ ${money(o.used)}</span><span class="small">${extra.used}</span></div>
+        <div><span class="lab">還沒上的課（月底）</span><span class="big">NT$ ${money(o.def)}</span><span class="small">${extra.def}</span></div>
       </div>
       ${msg}
-      ${(f.ppEarned + f.srFee) ? `<p class="finnote">這個月上的課裡，有 <b>NT$ ${money(f.ppEarned + f.srFee)}</b> 是用之前預收的錢上的（私教預繳 ${money(f.ppEarned)}、自營團課學費 ${money(f.srFee)}）。</p>` : ''}
+    </section>`;
+  };
+  const last = nextMk(nowMk > monthKey ? nowMk : monthKey);
+  const hist = []; for(let mk = START_MONTH; mk <= last; mk = nextMk(mk)) hist.push(finMonth(mk));
+  const rows = hist.map(h=>{ const fut = h.mk > nowMk;
+    return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===nowMk?'<small>本月</small>':''}</td>
+      <td class="r">${money(h.sr.def)}</td><td class="r">${money(h.pv.def)}</td><td class="r"><b>${money(h.def)}</b></td></tr>`; }).join('');
+  $('#view').innerHTML = `
+    <section class="card finhead">
+      <span class="lab">${isNow?'到今天':isFuture?`${mLabel(monthKey)}底（預估）`:`${mLabel(monthKey)}底`}要留著的錢</span>
+      <span class="val num"><span class="cur">NT$</span>${money(head.def)}</span>
+      <span class="sub">已經收了錢、還沒上的課。這筆錢不要花掉。</span>
+      <span class="sub">自營團課 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
     </section>
+    ${block('自營團課', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
+    ${block('私教課', f.pv, {cash:`預繳購買 ${money(f.pv.buys)} ＋ 月結、堂結 ${money(f.pv.cash - f.pv.buys)}`, used:'本月所有私教課', def:'預繳學生還沒上完的堂數'})}
     <section class="recsec card finsec">
-      <div class="rechead"><h2>${mLabel(n.mk)}預估</h2><span class="hint">照課表和已登記的停課、預繳估算</span></div>
-      <div class="recstats">
-        <div><span class="lab">預估入帳</span><span class="big">NT$ ${money(n.cash)}</span><span class="small">已知的預繳 ${money(n.ppBuys + n.srPaid)}</span></div>
-        <div><span class="lab">預估賺到</span><span class="big">NT$ ${money(n.earned)}</span><span class="small">課表全開的話</span></div>
-        <div><span class="lab">跟這個月比</span><span class="big">${n.cash>=f.cash?'+':'−'}${money(Math.abs(n.cash - f.cash))}</span><span class="small">${n.cash < f.cash ? `${mLabel(n.mk)}入帳會比${mLabel(f.mk)}少，要預留` : `${mLabel(n.mk)}入帳不會比${mLabel(f.mk)}少`}（還沒登記的續約、新學員不算在內）</span></div>
-      </div>
-    </section>
-    <section class="recsec card finsec">
-      <div class="rechead"><h2>每個月比較</h2><span class="hint">點月份切換</span></div>
+      <div class="rechead"><h2>每個月底要留著的錢</h2><span class="hint">點月份切換</span></div>
       <div class="tablewrap"><table class="fintable">
-        <thead><tr><th>月份</th><th class="r">實際入帳</th><th class="r">已經賺到</th><th class="r">多收 / 用掉預收</th><th class="r">月底還欠的課</th></tr></thead>
+        <thead><tr><th>月份</th><th class="r">自營團課</th><th class="r">私教課</th><th class="r">合計</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
-      <p class="finnote">「多收」代表這個月的錢有一部分屬於之後的課；「用掉預收」代表這個月的課有一部分之前就收過錢。團體課、月結和堂結私教，入帳以應收計算（實際匯款日可能晚幾天到一個月）。</p>
+      <p class="finnote">團體課是上完課才領錢，不會有預收，所以不列在這裡；整體收入看最上方的「本月上課總額」。自營團課的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
     </section>`;
 }
 function placeOf(name){
