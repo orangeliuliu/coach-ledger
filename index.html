@@ -361,6 +361,9 @@ tfoot td{font-weight:700;background:var(--surface-2);border-bottom:0}
 .recsec table{table-layout:fixed}
 .recsec th:nth-child(1){width:34%}.recsec th:nth-child(2){width:12%}.recsec th:nth-child(3){width:17%}.recsec th:nth-child(4){width:19%}.recsec th:nth-child(5){width:18%}
 .recsec .recv{width:100%;max-width:120px}
+.recsec td.src .period{color:var(--accent);font-weight:600;font-size:12px}
+.recsec td.src .modesel select{max-width:100%}
+.recsec td.src .modesel{white-space:nowrap}
 .rechead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 .rechead h2{margin:0;font-size:20px;font-weight:700}
 .rechead .hint{font-size:13px;color:var(--muted)}
@@ -915,6 +918,7 @@ function applyData(data){
   upgradeStored();   // an older backup is converted to the current numbering right away
   loadPrepaid();
   loadSelfrun();
+  loadBilling();
   watchMonth();
   return true;
 }
@@ -1219,6 +1223,31 @@ function sources(days){
   }));
   return [...map.values()].sort((a,b)=>b.held-a.held);
 }
+// 結算區間: a venue can bill from the (cut+1)th of last month to the cut-th of this month, named by the month it ends in
+// config/billing = {places:{地點:{cut:19}}}; no entry = the calendar month
+let billing = {places:{}};
+function loadBilling(){ const d = lsGet('config/billing'); billing = d && d.places ? d : {places:{}}; }
+const saveBilling = () => queue('config/billing', billing);
+function periodOf(cut, mk = monthKey){
+  const [y,m] = mk.split('-').map(Number);
+  const c = Math.min(cut, new Date(y, m, 0).getDate());
+  const end = ymd(new Date(y, m-1, c)), start = ymd(new Date(y, m-2, cut+1));
+  return [start, end];
+}
+// every day from `start` to `end`, across months (days before the ledger's first month are left out)
+function rangeDays(start, end){
+  const out = [], first = START_MONTH+'-01';
+  let [y,m] = start.slice(0,7).split('-').map(Number);
+  const [ey,em] = end.slice(0,7).split('-').map(Number);
+  while(y<ey || (y===ey && m<=em)){
+    const mk = y+'-'+pad(m);
+    if(mk >= START_MONTH) daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>=start && d.ds<=end && d.ds>=first) out.push(d); });
+    m++; if(m>12){ m=1; y++; }
+  }
+  return out;
+}
+const cutSelect = place => { const c = (billing.places[place]||{}).cut || 0;
+  return `<label class="modesel">結算<select class="field" data-cut="${esc(place)}" aria-label="${esc(place)} 結算區間"><option value="0"${c?'':' selected'}>整月</option>${Array.from({length:28},(_,i)=>i+1).map(n=>`<option value="${n}"${c===n?' selected':''}>每月 ${n} 號結</option>`).join('')}</select></label>`; };
 // Received amount: only what the user actually typed; empty means not reconciled yet
 const isRecvSet = s => { const r = month.received[s.key]; return !(r==null || r===''); };
 function diffText(d){
@@ -1655,7 +1684,15 @@ function placeOf(name){
   return '';
 }
 function renderRec(days){
-  const all = sources(days);
+  // venues with their own 結算區間 are counted over that period instead of the calendar month
+  const cuts = billing.places || {};
+  const all = sources(days).filter(s=>!(s.cat==='group' && (cuts[s.place]||{}).cut));
+  Object.entries(cuts).forEach(([place, c])=>{
+    if(!c || !c.cut) return;
+    const [a,b] = periodOf(c.cut);
+    sources(rangeDays(a, b)).filter(s=>s.cat==='group' && s.place===place).forEach(s=>{ s.period = [a,b]; s.partial = a < START_MONTH+'-01'; all.push(s); });
+  });
+  all.sort((x,y)=>y.held-x.held);
   const [my,mm] = monthKey.split('-').map(Number);
   const monthEnd = ymd(new Date(my, mm, 0));
   const upto = monthKey < TODAY.slice(0,7) ? monthEnd : TODAY;          // balances shown as of this day
@@ -1673,9 +1710,10 @@ function renderRec(days){
       if(set){ T.recv+=r; T.dueOfFilled+=s.held; T.filled++; }
       const name = sec.private ? s.client : s.place;
       const sub = sec.private ? s.place : [...s.classes].filter(Boolean).join('、');
-      const toPP = sec.private ? modeSelect(s.client) : '';
+      const toPP = sec.private ? modeSelect(s.client) : cutSelect(s.place);
+      const per = s.period ? `<span class="period">結算 ${md(s.period[0])}～${md(s.period[1])}${s.partial?`（${md(s.period[0])}～${md(ymd(new Date(Number(START_MONTH.slice(0,4)), Number(START_MONTH.slice(5,7))-1, 0)))} 沒有記錄）`:''}</span>` : '';
       return `<tr>
-        <td class="src"><b>${esc(name)}</b><span>${esc(sub)}</span>${toPP}</td>
+        <td class="src"><b>${esc(name)}</b><span>${esc(sub)}</span>${per}${toPP}</td>
         <td class="r"><span class="big">${s.heldN}</span> <span class="small">堂</span>${s.offN?`<div class="small">停 ${s.offN}</div>`:''}</td>
         <td class="r"><span class="big">${money(s.held)}</span></td>
         <td class="r"><input class="field recv" id="recv-${i}" type="number" min="0" inputmode="numeric" placeholder="未填" value="${set?r:''}" data-src="${esc(s.key)}" aria-label="${esc(name)} 實收"></td>
@@ -2032,6 +2070,11 @@ document.addEventListener('change', e=>{
   if(el.classList.contains('minsin')){ setMins(el.dataset.key, el.value); return; }
   if(el.dataset.rateFor!==undefined){ const n=el.dataset.rateFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.rate=Math.max(0,Math.round(Number(el.value)||0)); savePrepaid(); render(); toast(`${n} 每小時收費改成 NT$${money(st.rate)}`); return; }
   if(el.dataset.unitFor!==undefined){ const n=el.dataset.unitFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.unit=el.value; savePrepaid(); render(); toast(`${n} 改成${el.value==='time'?'按時間扣（小時）':'按堂數扣'}`); return; }
+  if(el.dataset.cut!==undefined){
+    const place = el.dataset.cut, v = Math.round(Number(el.value)||0);
+    if(v) billing.places[place] = {cut:v}; else delete billing.places[place];
+    saveBilling(); render(); toast(v ? `${place} 改成每月 ${v} 號結算（上月 ${v+1} 號～本月 ${v} 號）` : `${place} 改回整月對帳`); return;
+  }
   if(el.classList.contains('recv')){
     const v = el.value.trim();
     if(v==='') delete month.received[el.dataset.src]; else month.received[el.dataset.src] = Math.round(Number(v)||0);
@@ -2151,6 +2194,7 @@ function upgradeStored(){
 upgradeStored();
 loadPrepaid();
 loadSelfrun();
+loadBilling();
 month = normMonth(lsGet(monthPath()) || emptyMonth());
 render(); refreshSaveState();
 const closeMenu = () => { $('#moreMenu').open = false; };
