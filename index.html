@@ -1720,7 +1720,7 @@ function finMonth(mk, asOf){
   const [y,m] = mk.split('-').map(Number), end = asOf || ymd(new Date(y, m, 0));
   const sr = {cash:0, used:0, def:0}, pv = {cash:0, used:0, def:0, buys:0};
   const list = [];   // every amount counted below, for the 明細 table
-  days.forEach(d=>d.items.forEach(it=>{
+  days.forEach(d=>{ if(d.ds>end) return; d.items.forEach(it=>{   // only what has happened by `end`
     if(it.status!=='held') return;
     if(it.sr){
       const v = Math.round(Math.min(it.sr.fees, it.pay + (it.sr.t.venue||0)));   // 期課學費 part of the session
@@ -1733,10 +1733,10 @@ function finMonth(mk, asOf){
       if(!pre) pv.cash += it.pay;                                               // 月結 / 堂結: paid for as taught
       list.push({ds:d.ds, time:it.time, cat:'pv', what:`${n} 上課`, note:`${MODES[modeOf(n)]}${it.extra?' · 加課':''}${pre?(ppStartOf(n) && d.ds>=ppStartOf(n) ? ' · 用預繳的堂數' : ' · 登記之前的課，不扣堂'):''}`, cash:pre?0:it.pay, used:it.pay});
     }
-  }));
-  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk){ sr.cash += st.fee||0;
+  }); });
+  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk && st.paid<=end){ sr.cash += st.fee||0;
     list.push({ds:st.paid, time:'', cat:'sr', what:`${st.name} 繳學費`, note:`${t.name} · ${pkgName(st.pkg, t)}`, cash:st.fee||0, used:0}); } }));
-  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk){ pv.buys += e.amount||0;
+  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk && e.date<=end){ pv.buys += e.amount||0;
     list.push({ds:e.date, time:'', cat:'pv', what:`${n} 購買`, note:`預繳 ${fmtQ(e.count)} ${unitWord(n)}`, cash:e.amount||0, used:0}); } }); });
   pv.cash += pv.buys;
   list.sort((a,b)=>a.ds.localeCompare(b.ds) || (a.time||'').localeCompare(b.time||''));
@@ -1769,7 +1769,7 @@ function finList(f){
   const sum = k => rows.reduce((a,x)=>a+x[k],0);
   const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
   return `<section class="recsec card finsec" id="fin-list">
-      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序 · ${rows.length} 筆</span></div>
+      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序${f.mk===TODAY.slice(0,7)?`，算到今天（${md(TODAY)}）`:''} · ${rows.length} 筆</span></div>
       <div class="fincats">${tab('all','全部')}${tab('sr','自營團課')}${tab('pv','私教課')}</div>
       ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
         <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
@@ -1782,18 +1782,18 @@ function finList(f){
 }
 function renderFin(){
   const nowMk = TODAY.slice(0,7), isNow = monthKey===nowMk, isFuture = monthKey > nowMk;
-  const f = finMonth(monthKey);                       // the month as a whole (up to its last day)
-  const head = isNow ? finMonth(monthKey, TODAY) : f;  // this month: what is owed as of today
+  const f = isNow ? finMonth(monthKey, TODAY) : finMonth(monthKey);   // this month: only what has happened by today
+  const head = f;
   const block = (title, o, extra) => {
     const d = o.cash - o.used;
     const msg = d > 0 ? `<div class="finmsg warn"><b>多收了 NT$ ${money(d)}</b><span>是之後的課的錢，先存起來。</span></div>`
       : d < 0 ? `<div class="finmsg info"><b>用掉之前預收的 NT$ ${money(-d)}</b><span>這個月上的課有一部分之前就收過錢，可以從存起來的錢轉出來。</span></div>` : '';
     return `<section class="recsec card finsec">
-      <div class="rechead"><h2>${title}</h2></div>
+      <div class="rechead"><h2>${title}</h2>${isNow?`<span class="hint">算到今天（${md(TODAY)}）</span>`:isFuture?'<span class="hint">預估</span>':''}</div>
       <div class="recstats">
         <div><span class="lab">本月收到</span><span class="big">NT$ ${money(o.cash)}</span><span class="small">${extra.cash}</span></div>
         <div><span class="lab">本月上課</span><span class="big">NT$ ${money(o.used)}</span><span class="small">${extra.used}</span></div>
-        <div><span class="lab">還沒上的課（月底）</span><span class="big">NT$ ${money(o.def)}</span><span class="small">${extra.def}</span></div>
+        <div><span class="lab">還沒上的課（${isNow?'到今天':'月底'}）</span><span class="big">NT$ ${money(o.def)}</span><span class="small">${extra.def}</span></div>
       </div>
       ${msg}
     </section>`;
@@ -1801,7 +1801,7 @@ function renderFin(){
   const last = nextMk(nowMk > monthKey ? nowMk : monthKey);
   const hist = []; for(let mk = START_MONTH; mk <= last; mk = nextMk(mk)) hist.push(finMonth(mk));
   const rows = hist.map(h=>{ const fut = h.mk > nowMk;
-    return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===nowMk?'<small>本月</small>':''}</td>
+    return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===nowMk?'<small>本月 · 預估月底</small>':''}</td>
       <td class="r">${money(h.sr.def)}</td><td class="r">${money(h.pv.def)}</td><td class="r"><b>${money(h.def)}</b></td></tr>`; }).join('');
   $('#view').innerHTML = `
     <section class="card finhead">
