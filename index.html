@@ -98,6 +98,22 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+@media (max-width:600px){.row .act .seg{min-width:0;padding:6px 7px;white-space:nowrap}.row{column-gap:8px}}
+.seg.subb[aria-pressed="true"]{background:var(--wait);border-color:var(--wait);color:#fff}
+.row.subbed{background:var(--wait-soft)}
+.subline{display:block;font-size:12px;color:var(--ink)}
+.subline b{color:var(--off)}
+.subdue{color:var(--off)}
+.subform{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:10px 14px 12px 88px;border-top:1px dashed var(--line);background:var(--surface-2)}
+.subform .hint{flex-basis:100%;font-size:12px;color:var(--muted)}
+.subform label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+.subform .field{width:auto}.subform input[name=n]{width:140px}.subform input[name=a]{width:110px}
+.subform .btns{display:flex;gap:6px}
+@media (max-width:600px){.subform{padding-left:14px}}
+.sublist td small{display:block;font-size:11px;color:var(--muted)}
+.sublist td{font-family:var(--body)}
+.subchk{display:inline-flex;gap:6px;align-items:center;font-size:13px}
+.subchk input{width:18px;height:18px;accent-color:var(--ok)}
 .fincats{display:flex;gap:6px;padding-inline:16px}
 .finlist td{vertical-align:top}
 .finlist td small{display:block;font-size:11px;color:var(--muted);font-family:var(--body)}
@@ -1035,6 +1051,8 @@ function daysOfMonth(mk = monthKey, mo = month){
       if(it.extra){ it.base = base; }                       // extra: x.pay already set from minutes
       else { it.base = base; it.pay = it.override ?? base; }
     });
+    // 請人代課: {name, amt (only when not the full pay), paid}
+    items.forEach(it=>{ const src = it.extra ? mo.extras.find(x=>x.id===it.key) : mo.entries[it.key]; it.sub = (src && src.sub) || null; });
     items.sort((a,b)=>a.time.localeCompare(b.time));
     out.push({ds, d, dow, items});
   }
@@ -1060,11 +1078,30 @@ function freezePast(classId){
     m++; if(m>12){ m=1; y++; }
   }
 }
+const subAmt = it => it.sub ? (it.sub.amt ?? it.pay) : 0;
+function setSub(key, val){
+  const x = month.extras.find(x=>x.id===key);
+  if(x){ if(val) x.sub = val; else delete x.sub; saveMonth(); render(); return; }
+  const it = findItem(key); if(!it) return;
+  const e = {...(month.entries[key]||{})};
+  e.snap = e.snap || snapOf(it);
+  if(val) e.sub = val; else delete e.sub;
+  month.entries[key] = e;
+  saveMonth(); render();
+}
+function subNames(){
+  const set = new Set();
+  try{ Object.keys(localStorage).filter(k=>k.startsWith(LS+'months/')).forEach(k=>{ const mo = JSON.parse(localStorage.getItem(k))||{};
+    Object.values(mo.entries||{}).forEach(e=>e.sub && e.sub.name && set.add(e.sub.name)); (mo.extras||[]).forEach(x=>x.sub && x.sub.name && set.add(x.sub.name)); }); }catch(e){}
+  return [...set];
+}
+let subOpen = null;
 function totals(days){
-  const t = {held:0, heldN:0, wait:0, waitN:0, off:0, offN:0, all:0, n:0, xN:0, x:0, xAll:0};
+  const t = {held:0, heldN:0, wait:0, waitN:0, off:0, offN:0, all:0, n:0, xN:0, x:0, xAll:0, subN:0, sub:0, subDue:0};
   days.forEach(day=>day.items.forEach(it=>{
     t.n++; t.all += it.pay; if(it.extra) t.xAll++;
-    if(it.status==='held'){ t.held+=it.pay; t.heldN++; if(it.extra){ t.xN++; t.x+=it.pay; } }
+    if(it.status==='held'){ t.held+=it.pay; t.heldN++; if(it.extra){ t.xN++; t.x+=it.pay; }
+      if(it.sub){ const a = subAmt(it); t.subN++; t.sub+=a; if(!it.sub.paid) t.subDue+=a; } }
     else if(it.status==='off'){ t.off+=it.pay; t.offN++; }
     else { t.wait+=it.pay; t.waitN++; }
   }));
@@ -1118,10 +1155,10 @@ function render(){
   const days = daysOfMonth();
   const t = totals(days);
   const pct = v => t.all ? (v/t.all*100).toFixed(1)+'%' : '0';
-  const soFar = days.filter(d=>d.ds<=TODAY).reduce((sum,d)=>sum+d.items.filter(i=>i.status==='held').reduce((a,i)=>a+i.pay,0),0);
+  const soFar = days.filter(d=>d.ds<=TODAY).reduce((sum,d)=>sum+d.items.filter(i=>i.status==='held').reduce((a,i)=>a+i.pay-subAmt(i),0),0);   // 代課轉出 is not the coach's
   const isPastMonth = monthKey < TODAY.slice(0,7), isFuture = monthKey > TODAY.slice(0,7);
   $('#summary').innerHTML = `
-    <div class="stat main"><span class="lab">本月上課總額（已扣停課）</span><span class="val num"><span class="cur">NT$</span>${money(t.held)}</span><span class="sub">${t.xN ? `${t.heldN} 堂有開（含加課 ${t.xN} 堂 · NT$ ${money(t.x)}）` : `${t.heldN} 堂有開`}</span>
+    <div class="stat main"><span class="lab">本月上課總額（已扣停課${t.subN?'、代課':''}）</span><span class="val num"><span class="cur">NT$</span>${money(t.held - t.sub)}</span><span class="sub">${t.xN ? `${t.heldN} 堂有開（含加課 ${t.xN} 堂 · NT$ ${money(t.x)}）` : `${t.heldN} 堂有開`}</span>${t.subN?`<span class="sub">代課轉出 ${t.subN} 堂 · NT$ ${money(t.sub)}${t.subDue?`（<b class="subdue">待轉 ${money(t.subDue)}</b>）`:'（都轉了）'}</span>`:''}
       <div class="progress" title="有開 / 停課"><b style="width:${pct(t.held)};background:var(--ok)"></b><b style="width:${pct(t.off)};background:var(--off)"></b></div></div>
     <div class="stat off"><span class="lab">停課 · 沒收入</span><span class="val num">${t.offN}<span class="cur" style="margin-left:4px">堂</span></span><span class="sub num">少收 NT$ ${money(t.off)}</span></div>
     <div class="stat"><span class="lab">${isPastMonth?'整月已上完':'到今天為止已上'}</span><span class="val num"><span class="cur">NT$</span>${money(isFuture?0:soFar)}</span><span class="sub">${isPastMonth?'這個月已結束':isFuture?'還沒開始':'含今天'}</span></div>
@@ -1201,18 +1238,27 @@ function renderLog(days){
       const id = 'pay-'+it.key.replace(/[^a-zA-Z0-9_-]/g,'');
       const pn = isPrivate(it.content) ? privName(it.content) : '';
       const busy = it.selfrun || (pn && (isTimeBased(pn) || (it.status==='held' && modeOf(pn)==='perclass')));   // extra controls: 點名, minutes box or 收款
-      html += `<div class="row ${it.status}${busy?' busy':''}">
+      const subbed = it.sub && it.status==='held';
+      html += `<div class="row ${it.status}${busy?' busy':''}${subbed?' subbed':''}">
         <div class="time">${esc(it.time)}<small>${it.dur} 分</small></div>
-        <div class="what"><b>${esc(it.content)}${it.extra?'<span class="x">加課</span>':''}${it.orphan?'<span class="x">舊課表</span>':''}</b><span>${esc(it.place)}${it.kind?' · '+esc(it.kind):''}</span></div>
+        <div class="what"><b>${esc(it.content)}${it.extra?'<span class="x">加課</span>':''}${it.orphan?'<span class="x">舊課表</span>':''}</b><span>${esc(it.place)}${it.kind?' · '+esc(it.kind):''}</span>${subbed?`<span class="subline">代課：${esc(it.sub.name)} · 轉 NT$${money(subAmt(it))} · ${it.sub.paid?'已轉':'<b>待轉</b>'}</span>`:''}</div>
         <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${(it.sr.makeup.length+it.sr.guest.length)?` · 補 ${it.sr.makeup.length+it.sr.guest.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
         <div class="act">
           <button class="seg yes" aria-pressed="${it.status==='held'}" data-key="${esc(it.key)}" data-s="held">有開</button>
           <button class="seg no" aria-pressed="${it.status==='off'}" data-key="${esc(it.key)}" data-s="off">停課</button>
+          ${it.status==='held' ? `<button class="seg subb" aria-pressed="${!!it.sub}" data-subopen="${esc(it.key)}" title="教練請假、找人代課">代課</button>`:''}
           ${it.status==='held' && isPrivate(it.content) && modeOf(privName(it.content))==='perclass' ? `<button class="seg paid" aria-pressed="${!!month.paid[it.key]}" data-paidbtn="${esc(it.key)}" title="堂結：這堂收到錢了嗎">${month.paid[it.key]?'已收':'收款'}</button>`:''}
           ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
         </div>
       </div>`;
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
+      if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
+        <span class="hint">教練請假、找人代課：這堂照樣跟單位對帳，錢收到後轉給代課老師。</span>
+        <label>代課老師<input class="field" name="n" required list="dl-subn" value="${esc(it.sub?it.sub.name:'')}"></label>
+        <label>轉給他 NT$<input class="field num" name="a" type="number" min="0" step="50" inputmode="numeric" value="${subAmt(it) || it.pay}" required></label>
+        <div class="btns"><button class="btn primary" type="submit">儲存</button>${it.sub?`<button class="btn" type="button" data-subdel="${esc(it.key)}">取消代課</button>`:''}<button class="btn" type="button" data-subcancel="1">關閉</button></div>
+        <datalist id="dl-subn">${subNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+      </form>`;
     });
     if(addOpenFor===day.ds){
       html += `<form class="addform" data-date="${day.ds}">
@@ -1827,6 +1873,24 @@ function placeOf(name){
   for(const d of daysOfMonth()) for(const it of d.items) if(isPrivate(it.content) && privName(it.content)===name) return it.place;
   return '';
 }
+// 代課轉出: classes someone else taught for the coach; the venue still pays the coach, who passes it on
+function subSection(days){
+  const list = []; days.forEach(d=>d.items.forEach(it=>{ if(it.status==='held' && it.sub) list.push({...it, date:d.ds}); }));
+  const amt = x => subAmt(x), due = list.filter(x=>!x.sub.paid);
+  return `<section class="recsec card" id="rec-sub">
+    <div class="rechead"><h2>代課轉出</h2><span class="hint">教練請假、找人代課的課：照樣跟單位對帳，收到錢後轉給代課老師</span>
+      <span class="chip ${due.length?'bad':'ok'} recleft">${list.length?(due.length?`${due.length} 筆待轉`:'都轉了'):'本月沒有'}</span></div>
+    <div class="recstats">
+      <div><span class="lab">要轉出</span><span class="big">NT$ ${money(list.reduce((a,x)=>a+amt(x),0))}</span><span class="small">${list.length} 堂</span></div>
+      <div><span class="lab">已轉</span><span class="big">NT$ ${money(list.filter(x=>x.sub.paid).reduce((a,x)=>a+amt(x),0))}</span><span class="small">${list.length-due.length} 堂</span></div>
+      <div><span class="lab">待轉</span><span class="big ${due.length?'neg':''}">NT$ ${money(due.reduce((a,x)=>a+amt(x),0))}</span><span class="small">${due.length} 堂</span></div>
+    </div>
+    ${list.length?`<div class="tablewrap"><table class="fintable sublist">
+      <thead><tr><th>日期</th><th>課程</th><th>代課老師</th><th class="r">轉出 NT$</th><th>已轉</th></tr></thead>
+      <tbody>${list.map(x=>`<tr><td>${md(x.date)}<small>${esc(x.time)}</small></td><td>${esc(x.content)}<small>${esc(x.place)}</small></td><td>${esc(x.sub.name)}</td><td class="r">${money(amt(x))}</td>
+        <td><label class="subchk"><input type="checkbox" data-subpaid="${esc(x.key)}"${x.sub.paid?' checked':''}>${x.sub.paid?'已轉':'待轉'}</label></td></tr>`).join('')}</tbody></table></div>`:'<p class="finnote">在「逐日記錄」那堂課按「請人代」記錄。</p>'}
+  </section>`;
+}
 function renderRec(days){
   // venues with their own 結算區間 are counted over that period instead of the calendar month
   const cuts = billing.places || {};
@@ -1986,7 +2050,8 @@ function renderRec(days){
     ${invoiced({id:'rec-group', filter:s=>s.cat==='group', title:'團體課', sub:'按上課地點（付款單位）合計', col:'地點', unit:'個地點'})}
     ${prepaidSection()}
     ${perclassSection()}
-    ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}`;
+    ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}
+    ${subSection(days)}`;
   // Section shortcuts, each showing that section's status chip
   $('#recnav').innerHTML = [...document.querySelectorAll('.recsec')].map(sec=>{
     const chip = sec.querySelector('.recleft');
@@ -2072,6 +2137,9 @@ document.addEventListener('click', e=>{
     if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
     render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，逐日記錄也標成停課':'恢復有開'}`); return;
   }
+  if(t.dataset.subopen){ subOpen = subOpen===t.dataset.subopen ? null : t.dataset.subopen; render(); const f = document.querySelector('.subform input[name=n]'); f && !f.value && f.focus(); return; }
+  if(t.dataset.subcancel){ subOpen = null; render(); return; }
+  if(t.dataset.subdel){ subOpen = null; setSub(t.dataset.subdel, null); toast('已取消代課'); return; }
   if(t.dataset.gomonth){ monthKey = t.dataset.gomonth; srTermId = null; watchMonth(); return; }
   if(t.dataset.fincat){ finCat = t.dataset.fincat; render(); const el = document.getElementById('fin-list'); el && el.scrollIntoView({block:'start'}); return; }
   if(t.dataset.finmk){ monthKey = t.dataset.finmk; srTermId = null; watchMonth(); return; }
@@ -2174,6 +2242,10 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
+  if(el.dataset.subpaid!==undefined){
+    const it = findItem(el.dataset.subpaid); if(!it || !it.sub) return;
+    setSub(el.dataset.subpaid, {...it.sub, paid: el.checked}); toast(el.checked ? `已標記轉給 ${it.sub.name}` : '改回待轉'); return;
+  }
   if(el.dataset.srlv!==undefined){
     const i = el.dataset.srlv.lastIndexOf('|'), k = el.dataset.srlv.slice(0,i), id = el.dataset.srlv.slice(i+1);
     srEdit(k, a=>{ a.leave = (a.leave||[]).filter(x=>x!==id); if(!el.checked) a.leave.push(id); }); render(); return;
@@ -2269,6 +2341,13 @@ document.addEventListener('submit', e=>{
     if(moved){ monthKey = em; srTermId = null; watchMonth(); } else render();   // show the month the entry belongs to
     toast((editId ? `已修正 ${nm} 的登記` : (type==='buy' ? `已登記 ${nm} 購買 ${count} ${unitWord(n)}` : `已登記 ${nm} 目前剩 ${count} ${unitWord(n)}`)) + (moved ? `，已切到 ${Number(em.slice(5,7))} 月` : ''));
     return;
+  }
+  if(f.classList.contains('subform')){
+    const k = f.dataset.key, it = findItem(k); if(!it) return;
+    const name = f.elements.n.value.trim(); if(!name) return;
+    const a = Math.max(0, Math.round(Number(f.elements.a.value)||0));
+    const v = {name, paid: !!(it.sub && it.sub.paid)}; if(a !== it.pay) v.amt = a;
+    subOpen = null; setSub(k, v); toast(`已記錄 ${name} 代課，要轉 NT$${money(a)}`); return;
   }
   if(f.classList.contains('srmk')){
     const k = f.dataset.key, id = f.elements.s.value; if(!id) return;
