@@ -98,6 +98,14 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.fincats{display:flex;gap:6px;padding-inline:16px}
+.finlist td{vertical-align:top}
+.finlist td small{display:block;font-size:11px;color:var(--muted);font-family:var(--body)}
+.finlist td:nth-child(2){font-family:var(--body)}
+.fintag{display:inline-block;font-size:10px;font-weight:600;border-radius:4px;padding:0 5px;margin-right:6px;vertical-align:1px}
+.fintag.sr{background:var(--accent-soft);color:var(--accent)}.fintag.pv{background:var(--wait-soft);color:var(--ink)}
+.finlist .dim{color:var(--muted)}
+.finlist tfoot td{font-weight:700;border-top:2px solid var(--line)}
 .finhead{margin-top:12px;padding:16px;display:flex;flex-direction:column;gap:4px;border-color:var(--wait);background:var(--wait-soft)}
 .finhead .lab{font-size:13px;color:var(--muted);font-weight:600}
 .finhead .val{font-family:var(--num);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums}
@@ -1488,11 +1496,15 @@ function ppFormRow(n, cols){
         </form></td></tr>`;
         return html;
 }
-function ppDetailRow(n, l, uptoText, cols){
+function ppDetailRow(n, l, uptoText, cols, upto){
   let html = '';
+  // entries dated after the day the balance is counted to (e.g. a purchase next month) are not in this view yet
+  const later = upto ? (holder(n).entries||[]).filter(e=>e.date>upto).sort((a,b)=>a.date.localeCompare(b.date)) : [];
+  const laterNote = later.length ? `<p class="note pplater">${later.map(e=>`${md(e.date)} ${e.type==='buy'?`購買 ${fmtQ(e.count)} ${unitWord(n)}`:`登記剩 ${fmtQ(e.count)} ${unitWord(n)}`}`).join('、')}：日期在${uptoText}之後，這個月看不到。<button class="btn small" data-gomonth="${later[0].date.slice(0,7)}">看 ${Number(later[0].date.slice(5,7))} 月</button></p>` : '';
         const list = l.rows.slice().reverse().map(r=>`<li><span class="d">${Number(r.date.slice(5,7))}/${Number(r.date.slice(8,10))}</span><span class="t">${esc(r.text)}${r.amount?` · NT$${money(r.amount)}`:''}</span><span class="delta ${r.delta.startsWith('−')?'minus':''}">${r.delta}</span><span class="bal">剩 ${fmtQ(r.bal)}</span>${r.id?(ppConfirmDel===r.id?`<span class="delconfirm">刪除這筆？<button class="btn small danger" data-pp-delyes="${esc(n)}|${r.id}">刪除</button><button class="btn small" data-pp-delno="1">取消</button></span>`:`<span class="ppbtns"><button class="btn small" data-pp-edit="${esc(n)}|${r.id}">修正</button><button class="del" aria-label="刪除這筆登記" data-pp-del="${r.id}">×</button></span>`):''}</li>`).join('');
         html += `<tr class="ppdetail-row"><td colspan="${cols}">
-          ${l.rows.length?`<ol class="ppledger">${list}</ol>`:'<p class="note">還沒有任何登記。按「登記」輸入購買或目前剩餘堂數後，之後上的課會自動扣。</p>'}
+          ${l.rows.length?`<ol class="ppledger">${list}</ol>`:(later.length?'':'<p class="note">還沒有任何登記。按「登記」輸入購買或目前剩餘堂數後，之後上的課會自動扣。</p>')}
+          ${laterNote}
           <div class="ppfoot"><span class="note">餘額算到${uptoText}為止；登記以前的課不扣。</span></div>
         </td></tr>`;
         return html;
@@ -1707,17 +1719,27 @@ function finMonth(mk, asOf){
   const mo = moOf(mk), days = daysOfMonth(mk, mo);
   const [y,m] = mk.split('-').map(Number), end = asOf || ymd(new Date(y, m, 0));
   const sr = {cash:0, used:0, def:0}, pv = {cash:0, used:0, def:0, buys:0};
+  const list = [];   // every amount counted below, for the 明細 table
   days.forEach(d=>d.items.forEach(it=>{
     if(it.status!=='held') return;
-    if(it.sr) sr.used += Math.min(it.sr.fees, it.pay + (it.sr.t.venue||0));   // 期課學費 part of the session
+    if(it.sr){
+      const v = Math.round(Math.min(it.sr.fees, it.pay + (it.sr.t.venue||0)));   // 期課學費 part of the session
+      sr.used += v;
+      list.push({ds:d.ds, time:it.time, cat:'sr', what:`${srShort(it.sr.cid)} 上課`, note:`${it.sr.t.name} · ${it.sr.enrolled.length} 位期課學員的學費分攤`, cash:0, used:v});
+    }
     else if(isPrivate(it.content)){
+      const n = privName(it.content), pre = isPrepaid(n);
       pv.used += it.pay;
-      if(!isPrepaid(privName(it.content))) pv.cash += it.pay;                  // 月結 / 堂結: paid for as taught
+      if(!pre) pv.cash += it.pay;                                               // 月結 / 堂結: paid for as taught
+      list.push({ds:d.ds, time:it.time, cat:'pv', what:`${n} 上課`, note:`${MODES[modeOf(n)]}${it.extra?' · 加課':''}${pre?(ppStartOf(n) && d.ds>=ppStartOf(n) ? ' · 用預繳的堂數' : ' · 登記之前的課，不扣堂'):''}`, cash:pre?0:it.pay, used:it.pay});
     }
   }));
-  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk) sr.cash += st.fee||0; }));
-  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk) pv.buys += e.amount||0; }); });
+  (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk){ sr.cash += st.fee||0;
+    list.push({ds:st.paid, time:'', cat:'sr', what:`${st.name} 繳學費`, note:`${t.name} · ${pkgName(st.pkg, t)}`, cash:st.fee||0, used:0}); } }));
+  Object.entries(prepaid.students).forEach(([n,st])=>{ if(isPrepaid(n)) (st.entries||[]).forEach(e=>{ if(e.type==='buy' && e.date.slice(0,7)===mk){ pv.buys += e.amount||0;
+    list.push({ds:e.date, time:'', cat:'pv', what:`${n} 購買`, note:`預繳 ${fmtQ(e.count)} ${unitWord(n)}`, cash:e.amount||0, used:0}); } }); });
   pv.cash += pv.buys;
+  list.sort((a,b)=>a.ds.localeCompare(b.ds) || (a.time||'').localeCompare(b.time||''));
   // still owed
   const classes = heldPrivateClasses(end);
   Object.keys(prepaid.students).filter(isPrepaid).forEach(n=>{
@@ -1732,10 +1754,32 @@ function finMonth(mk, asOf){
     });
   });
   [sr,pv].forEach(o=>Object.keys(o).forEach(k=>o[k] = Math.round(o[k])));
-  return {mk, sr, pv, def: sr.def + pv.def};
+  return {mk, sr, pv, def: sr.def + pv.def, list};
 }
 const nextMk = mk => { let [y,m] = mk.split('-').map(Number); m++; if(m>12){ m=1; y++; } return y+'-'+pad(m); };
 const mLabel = mk => `${Number(mk.slice(5,7))} 月`;
+// first day a prepaid student's classes are deducted (purchase day, or the day after a 目前剩餘 entry)
+function ppStartOf(n){
+  const es = (prepaid.students[n]||{}).entries||[]; if(!es.length) return '';
+  return es.map(e=>{ if(e.type!=='set') return e.date; const x = new Date(e.date+'T00:00:00'); x.setDate(x.getDate()+1); return ymd(x); }).sort()[0];
+}
+let finCat = 'all';
+function finList(f){
+  const rows = f.list.filter(x=>finCat==='all' || x.cat===finCat);
+  const sum = k => rows.reduce((a,x)=>a+x[k],0);
+  const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
+  return `<section class="recsec card finsec" id="fin-list">
+      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序 · ${rows.length} 筆</span></div>
+      <div class="fincats">${tab('all','全部')}${tab('sr','自營團課')}${tab('pv','私教課')}</div>
+      ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
+        <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
+        <tbody>${rows.map(x=>`<tr><td>${md(x.ds)}${x.time?`<small>${esc(x.time)}</small>`:''}</td>
+          <td><span class="fintag ${x.cat}">${x.cat==='sr'?'自營':'私教'}</span>${esc(x.what)}<small>${esc(x.note)}</small></td>
+          <td class="r">${x.cash?money(x.cash):'<span class="dim">—</span>'}</td><td class="r">${x.used?money(x.used):'<span class="dim">—</span>'}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td></td><td>合計</td><td class="r">${money(sum('cash'))}</td><td class="r">${money(sum('used'))}</td></tr></tfoot>
+      </table></div>` : '<p class="finnote">這個月沒有。</p>'}
+    </section>`;
+}
 function renderFin(){
   const nowMk = TODAY.slice(0,7), isNow = monthKey===nowMk, isFuture = monthKey > nowMk;
   const f = finMonth(monthKey);                       // the month as a whole (up to its last day)
@@ -1768,6 +1812,7 @@ function renderFin(){
     </section>
     ${block('自營團課', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
     ${block('私教課', f.pv, {cash:`預繳購買 ${money(f.pv.buys)} ＋ 月結、堂結 ${money(f.pv.cash - f.pv.buys)}`, used:'本月所有私教課', def:'預繳學生還沒上完的堂數'})}
+    ${finList(f)}
     <section class="recsec card finsec">
       <div class="rechead"><h2>每個月底要留著的錢</h2><span class="hint">點月份切換</span></div>
       <div class="tablewrap"><table class="fintable">
@@ -1864,12 +1909,12 @@ function renderRec(days){
       let html = `<tr class="pprow">
         <td class="src"><b>${esc(n)}</b><span>${esc(place)}${time?'':` · 單堂 NT$${money(unitPriceOf(n))}`}</span>${time?`<label class="ratel">每小時 NT$<input class="field ratein" type="number" min="0" step="50" inputmode="numeric" value="${hourlyRateOf(n)}" data-rate-for="${esc(n)}" aria-label="${esc(n)} 每小時收費"></label>`:''}<div class="selrow">${modeSelect(n)}${unitSelect(n)}</div><div class="m-acts">${acts}</div></td>
         <td class="r"><span class="big">${fmtQ(used)}</span> <span class="small">${U}</span>${time&&monthHeldN[n]?`<div class="small">${monthHeldN[n]} 堂課</div>`:''}${planned>used?`<div class="small">本月還排 ${fmtQ(planned-used)} ${U}</div>`:''}</td>
-        <td class="r"><span class="big ${l.started&&l.balance<0?'neg':''}">${l.started?fmtQ(l.balance):'—'}</span> <span class="small">${U}</span><div>${balanceChip(l, planned-used, U)}</div></td>
+        <td class="r"><span class="big ${l.started&&l.balance<0?'neg':''}">${l.started?fmtQ(l.balance):'—'}</span> <span class="small">${U}</span><div>${!l.started && (holder(n).entries||[]).some(e=>e.date>upto) ? `<span class="chip wait">${md((holder(n).entries||[]).filter(e=>e.date>upto).map(e=>e.date).sort()[0])} 起有登記</span>` : balanceChip(l, planned-used, U)}</div></td>
         <td class="r">${buysThisMonth.length?`<span class="big">${money(cash)}</span><div class="small">買 ${fmtQ(cnt)} ${U}</div>`:'<span class="small">—</span>'}</td>
         <td class="ppact">${acts}</td>
       </tr>`;
       if(ppOpen===n) html += ppFormRow(n, 5);
-      if(ppDetail===n) html += ppDetailRow(n, l, uptoText, 5);
+      if(ppDetail===n) html += ppDetailRow(n, l, uptoText, 5, upto);
       return html;
     }).join('');
     return `<section class="recsec card" id="rec-prepaid">
@@ -2027,6 +2072,8 @@ document.addEventListener('click', e=>{
     if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
     render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，逐日記錄也標成停課':'恢復有開'}`); return;
   }
+  if(t.dataset.gomonth){ monthKey = t.dataset.gomonth; srTermId = null; watchMonth(); return; }
+  if(t.dataset.fincat){ finCat = t.dataset.fincat; render(); const el = document.getElementById('fin-list'); el && el.scrollIntoView({block:'start'}); return; }
   if(t.dataset.finmk){ monthKey = t.dataset.finmk; srTermId = null; watchMonth(); return; }
   if(t.dataset.srp){ srOpen = srOpen===t.dataset.srp ? null : t.dataset.srp; render(); return; }
   if(t.dataset.srterm){ srTermId = t.dataset.srterm; srOpen = null; srTermDel = null; render(); return; }
@@ -2217,9 +2264,10 @@ document.addEventListener('submit', e=>{
     const st = holder(n);
     if(editId && (st.entries||[]).some(x=>x.id===editId)) st.entries = st.entries.map(x=>x.id===editId ? entry : x);   // correct in place
     else st.entries = [...(st.entries||[]), entry];
-    ppOpen = null; ppEditId = null; ppDetail = n; saveHolder(n); render();
-    const nm = nameOf(n);
-    toast(editId ? `已修正 ${nm} 的登記` : (type==='buy' ? `已登記 ${nm} 購買 ${count} ${unitWord(n)}` : `已登記 ${nm} 目前剩 ${count} ${unitWord(n)}`));
+    ppOpen = null; ppEditId = null; ppDetail = n; saveHolder(n);
+    const nm = nameOf(n), em = date.slice(0,7), moved = em !== monthKey && em >= START_MONTH;
+    if(moved){ monthKey = em; srTermId = null; watchMonth(); } else render();   // show the month the entry belongs to
+    toast((editId ? `已修正 ${nm} 的登記` : (type==='buy' ? `已登記 ${nm} 購買 ${count} ${unitWord(n)}` : `已登記 ${nm} 目前剩 ${count} ${unitWord(n)}`)) + (moved ? `，已切到 ${Number(em.slice(5,7))} 月` : ''));
     return;
   }
   if(f.classList.contains('srmk')){
