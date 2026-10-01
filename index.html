@@ -1812,14 +1812,14 @@ function renderFin(){
     </section>
     ${block('自營團課', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
     ${block('私教課', f.pv, {cash:`預繳購買 ${money(f.pv.buys)} ＋ 月結、堂結 ${money(f.pv.cash - f.pv.buys)}`, used:'本月所有私教課', def:'預繳學生還沒上完的堂數'})}
-    ${finList(f)}
     <section class="recsec card finsec">
       <div class="rechead"><h2>每個月底要留著的錢</h2><span class="hint">點月份切換</span></div>
       <div class="tablewrap"><table class="fintable">
         <thead><tr><th>月份</th><th class="r">自營團課</th><th class="r">私教課</th><th class="r">合計</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
       <p class="finnote">團體課是上完課才領錢，不會有預收，所以不列在這裡；整體收入看最上方的「本月上課總額」。自營團課的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
-    </section>`;
+    </section>
+    ${finList(f)}`;
 }
 function placeOf(name){
   const c = schedule.find(c=>isPrivate(c.content) && privName(c.content)===name);
