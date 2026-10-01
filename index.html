@@ -1061,9 +1061,9 @@ function freezePast(classId){
   }
 }
 function totals(days){
-  const t = {held:0, heldN:0, wait:0, waitN:0, off:0, offN:0, all:0, n:0, xN:0, x:0};
+  const t = {held:0, heldN:0, wait:0, waitN:0, off:0, offN:0, all:0, n:0, xN:0, x:0, xAll:0};
   days.forEach(day=>day.items.forEach(it=>{
-    t.n++; t.all += it.pay;
+    t.n++; t.all += it.pay; if(it.extra) t.xAll++;
     if(it.status==='held'){ t.held+=it.pay; t.heldN++; if(it.extra){ t.xN++; t.x+=it.pay; } }
     else if(it.status==='off'){ t.off+=it.pay; t.offN++; }
     else { t.wait+=it.pay; t.waitN++; }
@@ -1121,11 +1121,11 @@ function render(){
   const soFar = days.filter(d=>d.ds<=TODAY).reduce((sum,d)=>sum+d.items.filter(i=>i.status==='held').reduce((a,i)=>a+i.pay,0),0);
   const isPastMonth = monthKey < TODAY.slice(0,7), isFuture = monthKey > TODAY.slice(0,7);
   $('#summary').innerHTML = `
-    <div class="stat main"><span class="lab">本月上課總額（已扣停課）</span><span class="val num"><span class="cur">NT$</span>${money(t.held)}</span><span class="sub">${t.xN ? `${t.heldN} 堂有開<br>課表 ${t.heldN - t.xN} 堂 · 加課 ${t.xN} 堂（NT$ ${money(t.x)}）` : `${t.heldN} 堂有開`}</span>
+    <div class="stat main"><span class="lab">本月上課總額（已扣停課）</span><span class="val num"><span class="cur">NT$</span>${money(t.held)}</span><span class="sub">${t.xN ? `${t.heldN} 堂有開（含加課 ${t.xN} 堂 · NT$ ${money(t.x)}）` : `${t.heldN} 堂有開`}</span>
       <div class="progress" title="有開 / 停課"><b style="width:${pct(t.held)};background:var(--ok)"></b><b style="width:${pct(t.off)};background:var(--off)"></b></div></div>
     <div class="stat off"><span class="lab">停課 · 沒收入</span><span class="val num">${t.offN}<span class="cur" style="margin-left:4px">堂</span></span><span class="sub num">少收 NT$ ${money(t.off)}</span></div>
     <div class="stat"><span class="lab">${isPastMonth?'整月已上完':'到今天為止已上'}</span><span class="val num"><span class="cur">NT$</span>${money(isFuture?0:soFar)}</span><span class="sub">${isPastMonth?'這個月已結束':isFuture?'還沒開始':'含今天'}</span></div>
-    <div class="stat"><span class="lab">課表全開的話</span><span class="val num"><span class="cur">NT$</span>${money(t.all)}</span><span class="sub">本月共 ${t.n} 堂</span></div>`;
+    <div class="stat"><span class="lab">課表全開的話</span><span class="val num"><span class="cur">NT$</span>${money(t.all)}</span><span class="sub">本月共 ${t.n} 堂${t.xAll ? `（含加課 ${t.xAll} 堂）` : ""}</span></div>`;
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
   const focusId = document.activeElement && document.activeElement.id;
   if(tab==='log') renderLog(days);
