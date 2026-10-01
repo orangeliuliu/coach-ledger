@@ -98,6 +98,11 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+#rec-year{padding-bottom:14px}
+.ytable tr.ycat td{background:var(--surface-2);font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted)}
+.ytable td:first-child{font-family:var(--body);white-space:nowrap}
+.ytable tfoot td{font-weight:700;border-top:2px solid var(--line)}
+#rec-year .tablewrap{padding-inline:12px}
 .finupto{margin-top:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
 .finupto label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
 .finupto .field{width:auto}
@@ -383,6 +388,10 @@ button{cursor:pointer}
 .field:focus{border-color:var(--accent);outline:none}
 .addform .btns{display:flex;gap:6px}
 .addform .full{grid-column:1/-1}
+.axtype{display:flex;gap:14px;align-items:center;font-size:14px}
+.axtype .lab{font-size:11px;color:var(--muted)}
+.axtype label{flex-direction:row!important;align-items:center;gap:4px!important;font-size:14px!important;color:var(--ink)!important}
+.axhint{margin:0;font-size:12px;color:var(--accent);font-weight:600}
 @media (max-width:720px){.addform{grid-template-columns:1fr 1fr}.addform .wide,.addform .full,.addform .btns{grid-column:1/-1}}
 
 /* reconcile */
@@ -1179,6 +1188,29 @@ function render(){
 }
 
 // Distinct classes (weekly schedule + extra classes this month) offered as templates for a new class
+// every private student the ledger knows: from the schedule, this month's extra classes and the payment settings
+function privateNames(){
+  const set = new Set();
+  schedule.forEach(c=>{ if(isPrivate(c.content) && clientOf(c.content)) set.add(clientOf(c.content)); });
+  month.extras.forEach(x=>{ if(isPrivate(x.content) && clientOf(x.content)) set.add(clientOf(x.content)); });
+  Object.keys(prepaid.students).forEach(n=>set.add(n));
+  set.delete('未寫名字');
+  return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+// 加課 form: show 學生 for 私教課, 上課內容 for 團體課, and say where the class will be counted
+function axUpdate(){
+  const f = document.querySelector('.addform'); if(!f) return;
+  const pv = (f.querySelector('input[name=ax-type]:checked')||{}).value === 'private';
+  $('#ax-content-wrap').hidden = pv; $('#ax-student-wrap').hidden = !pv;
+  const place = $('#ax-place').value.trim(), name = $('#ax-student').value.trim();
+  let hint;
+  if(pv){
+    if(!name) hint = '會算在：私教課（請選學生）';
+    else { const known = privateNames().includes(name), mode = modeOf(name);
+      hint = `會算在：私教課 · ${name}（${known?MODES[mode]:'新學生，預設月結'}${mode==='prepaid'?`，會扣${unitOf(name)==='time'?'上課時數':' 1 堂'}`:''}）· 列入財務頁`; }
+  } else hint = `會算在：團體課${place?` · ${place}`:''}（對帳照地點合計，不列入財務頁）`;
+  $('#ax-hint').textContent = hint;
+}
 function pickOptions(){
   const seen = new Set(), out = [];
   const add = (c, prefix) => {
@@ -1274,10 +1306,15 @@ function renderLog(days){
           </select></label>
         <label>時間<input class="field" id="ax-time" type="time" value="12:00" required></label>
         <label>分鐘<input class="field" id="ax-dur" type="number" min="0" step="5" inputmode="numeric" value="60" required></label>
-        <label class="wide">上課內容<input class="field" id="ax-content" autocomplete="off" placeholder="例：代課 body pump" required></label>
+        <div class="full axtype" role="radiogroup" aria-label="類型"><span class="lab">類型</span>
+          <label><input type="radio" name="ax-type" value="group" checked> 團體課</label>
+          <label><input type="radio" name="ax-type" value="private"> 私教課</label></div>
+        <label class="wide" id="ax-content-wrap">上課內容<input class="field" id="ax-content" autocomplete="off" placeholder="例：代課 body pump"></label>
+        <label class="wide" id="ax-student-wrap" hidden>學生<input class="field" id="ax-student" autocomplete="off" list="dl-ax-student" placeholder="選或輸入學生名字"><datalist id="dl-ax-student">${privateNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
         <label>地點<input class="field" id="ax-place" autocomplete="off" placeholder="例：XX 運動中心" required></label>
         <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" required></label>
         <div class="btns"><button class="btn primary" type="submit">加入</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
+        <p class="full axhint" id="ax-hint">會算在：團體課（對帳照地點合計）</p>
       </form>`;
     } else {
       html += `<div class="addrow"><button class="addlink" data-add="${day.ds}">＋ 加一堂臨時課 / 代課</button></div>`;
@@ -1316,14 +1353,15 @@ function periodOf(cut, mk = monthKey){
   const end = ymd(new Date(y, m-1, c)), start = ymd(new Date(y, m-2, cut+1));
   return [start, end];
 }
-// every day from `start` to `end`, across months (days before the ledger's first month are left out)
+// every day from `start` to `end`, across months. Days before the ledger's first month have no records,
+// so they follow the weekly schedule (every class counted as held).
 function rangeDays(start, end){
-  const out = [], first = START_MONTH+'-01';
+  const out = [];
   let [y,m] = start.slice(0,7).split('-').map(Number);
   const [ey,em] = end.slice(0,7).split('-').map(Number);
   while(y<ey || (y===ey && m<=em)){
     const mk = y+'-'+pad(m);
-    if(mk >= START_MONTH) daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>=start && d.ds<=end && d.ds>=first) out.push(d); });
+    daysOfMonth(mk, mk >= START_MONTH ? moOf(mk) : normMonth(emptyMonth())).forEach(d=>{ if(d.ds>=start && d.ds<=end) out.push(d); });
     m++; if(m>12){ m=1; y++; }
   }
   return out;
@@ -1411,12 +1449,21 @@ function srOffSet(t, mo, mk){
   });
   return off;
 }
-// one session's share of a student's fee: fee ÷ the sessions actually held from their start date (停課 ones don't count)
-function shareOf(t, st, off){
+// one session's share of a student's fee. Start at fee ÷ all their sessions; when a session is 停課, what is left of
+// the fee is spread over the sessions after it only, so sessions before a cancellation (already reconciled) never change.
+function shareOf(t, st, off, key){
   const cids = st.pkg==='both' ? selfrun.cids : [st.pkg];
-  let n = 0;
-  t.dates.forEach(d=>{ if(d >= startOf(t, st)) cids.forEach(cid=>{ if(!off || !off.has(d+'_'+cid)) n++; }); });
-  return n ? (st.fee||0) / n : 0;
+  const seq = [];
+  t.dates.slice().sort().forEach(d=>{ if(d >= startOf(t, st)) cids.forEach(cid=>seq.push(d+'_'+cid)); });
+  if(!seq.length) return 0;
+  let left = st.fee||0, rate = left / seq.length, last = -1;
+  const out = {};
+  seq.forEach((k,i)=>{
+    if(off && off.has(k)){ out[k] = 0; const rest = seq.length - i - 1; if(rest) rate = left / rest; return; }
+    out[k] = rate; left -= rate; last = i;
+  });
+  if(left > 0.005 && last >= 0) out[seq[last]] += left;   // the term ended on cancelled sessions: the last held one keeps the rest
+  return out[key] || 0;
 }
 const moOf = mk => mk===monthKey ? month : normMonth(lsGet('months/'+mk) || emptyMonth());
 function srSession(ds, cid, mo){
@@ -1429,7 +1476,7 @@ function srSession(ds, cid, mo){
   const makeup = (a.makeup||[]).filter(id=>!!stuOf(id).st);   // may be a student of an earlier term
   const guest = a.guest || [], single = a.single || [];
   const off = srOffSet(t, mo, ds.slice(0,7));
-  const fees = enrolled.reduce((s,st)=>s+shareOf(t, st, off), 0), singles = single.reduce((s,x)=>s+(x.amount||0), 0);
+  const fees = enrolled.reduce((s,st)=>s+shareOf(t, st, off, key), 0), singles = single.reduce((s,x)=>s+(x.amount||0), 0);
   const value = Math.round(fees + singles - (t.venue||0));
   return {t, ds, cid, key, enrolled, leave, makeup, guest, single, fees:Math.round(fees), singles,
     present: enrolled.length - leave.length + makeup.length + guest.length + single.length,
@@ -1801,7 +1848,7 @@ function finMonth(mk, asOf){
     const off = srOffSet(t);
     termSessions(t).forEach(s=>{
       if(s.ds<=end || s.status!=='held') return;
-      s.enrolled.forEach(st=>{ if(st.paid && st.paid<=end) sr.def += shareOf(t, st, off); });
+      s.enrolled.forEach(st=>{ if(st.paid && st.paid<=end) sr.def += shareOf(t, st, off, s.key); });
     });
   });
   [sr,pv].forEach(o=>Object.keys(o).forEach(k=>o[k] = Math.round(o[k])));
@@ -1888,6 +1935,79 @@ function placeOf(name){
   for(const d of daysOfMonth()) for(const it of d.items) if(isPrivate(it.content) && privName(it.content)===name) return it.place;
   return '';
 }
+// 年度總表: every month of the year up to today, per venue / private student / 自營團課, plus the prepaid money received
+function yearData(year){
+  const nowMk = TODAY.slice(0,7), months = [];
+  for(let m=1; m<=12; m++){ const mk = year+'-'+pad(m); if(mk >= START_MONTH && mk <= nowMk) months.push(mk); }
+  const rows = new Map(), add = (cat, name, mk, v) => {
+    const k = cat+'｜'+name; if(!rows.has(k)) rows.set(k, {cat, name, by:{}});
+    const r = rows.get(k); r.by[mk] = (r.by[mk]||0) + v;
+  };
+  const pre = {}, sub = {};
+  months.forEach(mk=>{
+    const upto = mk===nowMk ? TODAY : '9999';
+    daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>upto) return; d.items.forEach(it=>{
+      if(it.status!=='held') return;
+      if(it.sr) add('自營團課', srShort(it.sr.cid)+'（每堂淨額）', mk, it.pay);
+      else if(isPrivate(it.content)) add('私教課', privName(it.content), mk, it.pay);
+      else add('團體課', (it.place||'').trim() || '（沒寫地點）', mk, it.pay);
+      if(it.sub) sub[mk] = (sub[mk]||0) + subAmt(it);
+    }); });
+    const f = finMonth(mk, mk===nowMk ? TODAY : undefined);
+    pre[mk] = {pv: f.pv.buys, sr: f.sr.cash};
+  });
+  const order = {'團體課':0, '私教課':1, '自營團課':2};
+  const list = [...rows.values()].sort((a,b)=>order[a.cat]-order[b.cat] || a.name.localeCompare(b.name,'zh-Hant'));
+  return {months, list, pre, sub};
+}
+function yearSection(){
+  const year = Number(monthKey.slice(0,4)), Y = yearData(year), ms = Y.months;
+  if(!ms.length) return '';
+  const tot = r => ms.reduce((a,mk)=>a+(r.by[mk]||0),0);
+  const colSum = (list, mk) => list.reduce((a,r)=>a+(r.by[mk]||0),0);
+  const subRow = {by:Object.fromEntries(ms.map(mk=>[mk, -(Y.sub[mk]||0)]))};
+  const head = `<tr><th>項目</th>${ms.map(mk=>`<th class="r">${Number(mk.slice(5))} 月</th>`).join('')}<th class="r">全年</th></tr>`;
+  let cat = '';
+  const body = Y.list.map(r=>{ const h = r.cat!==cat ? `<tr class="ycat"><td colspan="${ms.length+2}">${r.cat}</td></tr>` : ''; cat = r.cat;
+    return h + `<tr><td>${esc(r.name)}</td>${ms.map(mk=>`<td class="r">${r.by[mk]?money(r.by[mk]):''}</td>`).join('')}<td class="r"><b>${money(tot(r))}</b></td></tr>`; }).join('');
+  const hasSub = ms.some(mk=>Y.sub[mk]);
+  const net = mk => colSum(Y.list, mk) - (Y.sub[mk]||0);
+  const preRow = (label, k) => `<tr><td>${label}</td>${ms.map(mk=>`<td class="r">${Y.pre[mk][k]?money(Y.pre[mk][k]):''}</td>`).join('')}<td class="r"><b>${money(ms.reduce((a,mk)=>a+Y.pre[mk][k],0))}</b></td></tr>`;
+  return `<section class="recsec card" id="rec-year">
+    <div class="rechead"><h2>${year} 年度總表</h2><span class="hint">每個月的上課金額（${ms[ms.length-1]===TODAY.slice(0,7)?`算到今天 ${md(TODAY)}`:'整月'}），報稅或年底整理用</span>
+      <button class="btn small recleft" data-yearcsv="${year}">下載 Excel（CSV）</button></div>
+    <div class="tablewrap"><table class="fintable ytable">
+      <thead>${head}</thead>
+      <tbody>${body}
+        ${hasSub?`<tr class="ycat"><td colspan="${ms.length+2}">代課轉出</td></tr><tr><td>轉給代課老師</td>${ms.map(mk=>`<td class="r">${Y.sub[mk]?'−'+money(Y.sub[mk]):''}</td>`).join('')}<td class="r"><b>−${money(ms.reduce((a,mk)=>a+(Y.sub[mk]||0),0))}</b></td></tr>`:''}
+      </tbody>
+      <tfoot><tr><td>合計</td>${ms.map(mk=>`<td class="r">${money(net(mk))}</td>`).join('')}<td class="r">${money(ms.reduce((a,mk)=>a+net(mk),0))}</td></tr></tfoot>
+    </table></div>
+    <div class="tablewrap"><table class="fintable ytable">
+      <thead><tr><th>預繳實際收到的錢</th>${ms.map(mk=>`<th class="r">${Number(mk.slice(5))} 月</th>`).join('')}<th class="r">全年</th></tr></thead>
+      <tbody>${preRow('私教預繳購買','pv')}${preRow('自營團課學費','sr')}</tbody>
+    </table></div>
+    <p class="finnote">上面是照上課計算的金額（團體課、私教課照課表與實際記錄，自營團課是每堂學費分攤＋單堂−場地費）。預繳的錢是收到那天一次收進來，另外列在下面。團體課、月結私教的實際匯款請看各月對帳的「實收」；報稅以扣繳憑單為準。</p>
+  </section>`;
+}
+function yearCsv(year){
+  const Y = yearData(year), ms = Y.months;
+  const q = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g,'""')}"` : String(v);
+  const lines = [['類別','項目',...ms.map(mk=>`${Number(mk.slice(5))}月`),'全年']];
+  Y.list.forEach(r=>lines.push([r.cat, r.name, ...ms.map(mk=>r.by[mk]||0), ms.reduce((a,mk)=>a+(r.by[mk]||0),0)]));
+  if(ms.some(mk=>Y.sub[mk])) lines.push(['代課轉出','轉給代課老師', ...ms.map(mk=>-(Y.sub[mk]||0)), -ms.reduce((a,mk)=>a+(Y.sub[mk]||0),0)]);
+  lines.push(['合計','', ...ms.map(mk=>Y.list.reduce((a,r)=>a+(r.by[mk]||0),0) - (Y.sub[mk]||0)), '']);
+  lines[lines.length-1][ms.length+2] = lines[lines.length-1].slice(2, ms.length+2).reduce((a,v)=>a+v,0);
+  lines.push([]);
+  lines.push(['預繳實際收到','私教預繳購買', ...ms.map(mk=>Y.pre[mk].pv), ms.reduce((a,mk)=>a+Y.pre[mk].pv,0)]);
+  lines.push(['預繳實際收到','自營團課學費', ...ms.map(mk=>Y.pre[mk].sr), ms.reduce((a,mk)=>a+Y.pre[mk].sr,0)]);
+  const csv = '\ufeff' + lines.map(l=>l.map(q).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `教練收入年度總表-${year}.csv`;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast(`已下載 ${year} 年度總表`);
+}
 // 代課轉出: classes someone else taught for the coach; the venue still pays the coach, who passes it on
 function subSection(days){
   const list = []; days.forEach(d=>d.items.forEach(it=>{ if(it.status==='held' && it.sub) list.push({...it, date:d.ds}); }));
@@ -1934,7 +2054,7 @@ function renderRec(days){
       const name = sec.private ? s.client : s.place;
       const sub = sec.private ? s.place : [...s.classes].filter(Boolean).join('、');
       const toPP = sec.private ? modeSelect(s.client) : cutSelect(s.place);
-      const per = s.period ? `<span class="period">結算 ${md(s.period[0])}～${md(s.period[1])}${s.partial?`（${md(s.period[0])}～${md(ymd(new Date(Number(START_MONTH.slice(0,4)), Number(START_MONTH.slice(5,7))-1, 0)))} 沒有記錄）`:''}</span>` : '';
+      const per = s.period ? `<span class="period">結算 ${md(s.period[0])}～${md(s.period[1])}${s.partial?`（${md(s.period[0])}～${md(ymd(new Date(Number(START_MONTH.slice(0,4)), Number(START_MONTH.slice(5,7))-1, 0)))} 照課表估算，都算有開）`:''}</span>` : '';
       return `<tr>
         <td class="src"><b>${esc(name)}</b><span>${esc(sub)}</span>${per}${toPP}</td>
         <td class="r"><span class="big">${s.heldN}</span> <span class="small">堂</span>${s.offN?`<div class="small">停 ${s.offN}</div>`:''}</td>
@@ -2066,7 +2186,8 @@ function renderRec(days){
     ${prepaidSection()}
     ${perclassSection()}
     ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}
-    ${subSection(days)}`;
+    ${subSection(days)}
+    ${yearSection()}`;
   // Section shortcuts, each showing that section's status chip
   $('#recnav').innerHTML = [...document.querySelectorAll('.recsec')].map(sec=>{
     const chip = sec.querySelector('.recleft');
@@ -2155,6 +2276,7 @@ document.addEventListener('click', e=>{
   if(t.dataset.subopen){ subOpen = subOpen===t.dataset.subopen ? null : t.dataset.subopen; render(); const f = document.querySelector('.subform input[name=n]'); f && !f.value && f.focus(); return; }
   if(t.dataset.subcancel){ subOpen = null; render(); return; }
   if(t.dataset.subdel){ subOpen = null; setSub(t.dataset.subdel, null); toast('已取消代課'); return; }
+  if(t.dataset.yearcsv){ yearCsv(Number(t.dataset.yearcsv)); return; }
   if(t.dataset.gomonth){ monthKey = t.dataset.gomonth; srTermId = null; watchMonth(); return; }
   if(t.dataset.fincat){ finCat = t.dataset.fincat; render(); const el = document.getElementById('fin-list'); el && el.scrollIntoView({block:'start'}); return; }
   if(t.dataset.finuptoSet){ finUpto = t.dataset.finuptoSet; render(); return; }
@@ -2300,8 +2422,12 @@ document.addEventListener('change', e=>{
     const o = pickOptions()[Number(el.value)]; if(!o) return;
     const c = o.c, set = (id,v) => { const f=document.getElementById(id); if(f) f.value = v ?? ''; };
     set('ax-time', c.time); set('ax-dur', c.dur); set('ax-content', c.content); set('ax-place', c.place); set('ax-pay', c.pay);
-    return;
+    const pv = isPrivate(c.content);
+    document.querySelector(`.addform input[name=ax-type][value=${pv?'private':'group'}]`).checked = true;
+    set('ax-student', pv ? clientOf(c.content) : '');
+    axUpdate(); return;
   }
+  if(el.name==='ax-type'){ axUpdate(); return; }
   if(el.classList.contains('payin')){ setPay(el.dataset.key, el.value); return; }
   if(el.classList.contains('minsin')){ setMins(el.dataset.key, el.value); return; }
   if(el.dataset.rateFor!==undefined){ const n=el.dataset.rateFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.rate=Math.max(0,Math.round(Number(el.value)||0)); savePrepaid(); render(); toast(`${n} 每小時收費改成 NT$${money(st.rate)}`); return; }
@@ -2339,6 +2465,7 @@ document.addEventListener('input', e=>{
   // keep the amount in step with the number of classes until the user types their own amount
   if(e.target.id==='pp-count'){ const a=$('#pp-amount'); if(a && !a.dataset.touched) a.value = Math.round((Number(e.target.value)||0) * Number(e.target.dataset.unit||0)); }
   if(e.target.id==='pp-amount') e.target.dataset.touched = '1';
+  if(e.target.id==='ax-student' || e.target.id==='ax-place') axUpdate();
 });
 document.addEventListener('submit', e=>{
   e.preventDefault();
@@ -2421,9 +2548,19 @@ document.addEventListener('submit', e=>{
   }
   if(!f.classList.contains('addform')) return;
   const v = id => document.getElementById(id).value.trim();
+  const pv = (f.querySelector('input[name=ax-type]:checked')||{}).value === 'private';
+  let content = v('ax-content');
+  if(pv){
+    const name = v('ax-student'); if(!name){ toast('請選學生'); $('#ax-student').focus(); return; }
+    const base = isPrivate(content) ? content.split(/\s*-\s*/)[0].trim() : '私教課';
+    content = `${base} - ${name}`;
+  } else {
+    if(!content){ toast('請填上課內容'); $('#ax-content').focus(); return; }
+    if(isPrivate(content)){ toast('團體課的內容不能有「私教」或「私人課」，要記私教課請選「私教課」'); return; }
+  }
   month.extras.push({id:'x'+Date.now().toString(36), date:f.dataset.date, time:v('ax-time'), dur:Math.round(Number(v('ax-dur'))||60),
-    content:v('ax-content'), place:v('ax-place'), kind:'', pay:Math.round(Number(v('ax-pay'))||0), s:'held'});
-  addOpenFor=null; saveMonth(); render(); toast('已加入，並標為有開');
+    content, place:v('ax-place'), kind:'', pay:Math.round(Number(v('ax-pay'))||0), s:'held'});
+  addOpenFor=null; saveMonth(); render(); toast(pv ? `已加入 ${content}，並標為有開` : '已加入，並標為有開');
 });
 
 /* ---------- boot ---------- */
