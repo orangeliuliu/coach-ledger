@@ -98,6 +98,11 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.finupto{margin-top:12px;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
+.finupto label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted);font-weight:600}
+.finupto .field{width:auto}
+.finupto .btns{display:flex;gap:6px}
+.finupto .hint{flex-basis:100%;font-size:12px;color:var(--muted)}
 @media (max-width:600px){.row .act .seg{min-width:0;padding:6px 7px;white-space:nowrap}.row{column-gap:8px}}
 .seg.subb[aria-pressed="true"]{background:var(--wait);border-color:var(--wait);color:#fff}
 .row.subbed{background:var(--wait-soft)}
@@ -1800,7 +1805,7 @@ function finMonth(mk, asOf){
     });
   });
   [sr,pv].forEach(o=>Object.keys(o).forEach(k=>o[k] = Math.round(o[k])));
-  return {mk, sr, pv, def: sr.def + pv.def, list};
+  return {mk, end, sr, pv, def: sr.def + pv.def, list};
 }
 const nextMk = mk => { let [y,m] = mk.split('-').map(Number); m++; if(m>12){ m=1; y++; } return y+'-'+pad(m); };
 const mLabel = mk => `${Number(mk.slice(5,7))} 月`;
@@ -1809,13 +1814,13 @@ function ppStartOf(n){
   const es = (prepaid.students[n]||{}).entries||[]; if(!es.length) return '';
   return es.map(e=>{ if(e.type!=='set') return e.date; const x = new Date(e.date+'T00:00:00'); x.setDate(x.getDate()+1); return ymd(x); }).sort()[0];
 }
-let finCat = 'all';
+let finCat = 'all', finUpto = null;
 function finList(f){
   const rows = f.list.filter(x=>finCat==='all' || x.cat===finCat);
   const sum = k => rows.reduce((a,x)=>a+x[k],0);
   const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
   return `<section class="recsec card finsec" id="fin-list">
-      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序${f.mk===TODAY.slice(0,7)?`，算到今天（${md(TODAY)}）`:''} · ${rows.length} 筆</span></div>
+      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
       <div class="fincats">${tab('all','全部')}${tab('sr','自營團課')}${tab('pv','私教課')}</div>
       ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
         <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
@@ -1827,19 +1832,24 @@ function finList(f){
     </section>`;
 }
 function renderFin(){
-  const nowMk = TODAY.slice(0,7), isNow = monthKey===nowMk, isFuture = monthKey > nowMk;
-  const f = isNow ? finMonth(monthKey, TODAY) : finMonth(monthKey);   // this month: only what has happened by today
+  const nowMk = TODAY.slice(0,7), isNow = monthKey===nowMk;
+  const [fy,fm] = monthKey.split('-').map(Number), mEnd = ymd(new Date(fy, fm, 0)), mStart = monthKey+'-01';
+  // 算到哪一天: picked by the user, otherwise today for this month and the last day for other months
+  const upto = (finUpto && finUpto.slice(0,7)===monthKey) ? finUpto : (isNow ? TODAY : mEnd);
+  const est = upto > TODAY;   // includes days that have not happened yet
+  const uptoText = md(upto) + (upto===TODAY ? ' 今天' : upto===mEnd ? ' 月底' : '');
+  const f = finMonth(monthKey, upto);
   const head = f;
   const block = (title, o, extra) => {
     const d = o.cash - o.used;
     const msg = d > 0 ? `<div class="finmsg warn"><b>多收了 NT$ ${money(d)}</b><span>是之後的課的錢，先存起來。</span></div>`
       : d < 0 ? `<div class="finmsg info"><b>用掉之前預收的 NT$ ${money(-d)}</b><span>這個月上的課有一部分之前就收過錢，可以從存起來的錢轉出來。</span></div>` : '';
     return `<section class="recsec card finsec">
-      <div class="rechead"><h2>${title}</h2>${isNow?`<span class="hint">算到今天（${md(TODAY)}）</span>`:isFuture?'<span class="hint">預估</span>':''}</div>
+      <div class="rechead"><h2>${title}</h2><span class="hint">算到 ${uptoText}${est?' · 預估':''}</span></div>
       <div class="recstats">
         <div><span class="lab">本月收到</span><span class="big">NT$ ${money(o.cash)}</span><span class="small">${extra.cash}</span></div>
         <div><span class="lab">本月上課</span><span class="big">NT$ ${money(o.used)}</span><span class="small">${extra.used}</span></div>
-        <div><span class="lab">還沒上的課（${isNow?'到今天':'月底'}）</span><span class="big">NT$ ${money(o.def)}</span><span class="small">${extra.def}</span></div>
+        <div><span class="lab">還沒上的課（到 ${md(upto)}）</span><span class="big">NT$ ${money(o.def)}</span><span class="small">${extra.def}</span></div>
       </div>
       ${msg}
     </section>`;
@@ -1850,8 +1860,13 @@ function renderFin(){
     return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===nowMk?'<small>本月 · 預估月底</small>':''}</td>
       <td class="r">${money(h.sr.def)}</td><td class="r">${money(h.pv.def)}</td><td class="r"><b>${money(h.def)}</b></td></tr>`; }).join('');
   $('#view').innerHTML = `
+    <div class="finupto card">
+      <label>算到哪一天<input class="field" type="date" data-finupto value="${upto}" min="${mStart}" max="${mEnd}"></label>
+      <div class="btns">${isNow?`<button class="btn small${upto===TODAY?' primary':''}" data-finupto-set="${TODAY}">今天</button>`:''}<button class="btn small${upto===mEnd?' primary':''}" data-finupto-set="${mEnd}">月底</button></div>
+      <span class="hint">${est?'選到還沒到的日子：照課表全開、已登記的停課和預繳估算。':'只算到這一天為止的課、繳費和購買。'}</span>
+    </div>
     <section class="card finhead">
-      <span class="lab">${isNow?'到今天':isFuture?`${mLabel(monthKey)}底（預估）`:`${mLabel(monthKey)}底`}要留著的錢</span>
+      <span class="lab">到 ${uptoText}要留著的錢${est?'（預估）':''}</span>
       <span class="val num"><span class="cur">NT$</span>${money(head.def)}</span>
       <span class="sub">已經收了錢、還沒上的課。這筆錢不要花掉。</span>
       <span class="sub">自營團課 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
@@ -2142,6 +2157,7 @@ document.addEventListener('click', e=>{
   if(t.dataset.subdel){ subOpen = null; setSub(t.dataset.subdel, null); toast('已取消代課'); return; }
   if(t.dataset.gomonth){ monthKey = t.dataset.gomonth; srTermId = null; watchMonth(); return; }
   if(t.dataset.fincat){ finCat = t.dataset.fincat; render(); const el = document.getElementById('fin-list'); el && el.scrollIntoView({block:'start'}); return; }
+  if(t.dataset.finuptoSet){ finUpto = t.dataset.finuptoSet; render(); return; }
   if(t.dataset.finmk){ monthKey = t.dataset.finmk; srTermId = null; watchMonth(); return; }
   if(t.dataset.srp){ srOpen = srOpen===t.dataset.srp ? null : t.dataset.srp; render(); return; }
   if(t.dataset.srterm){ srTermId = t.dataset.srterm; srOpen = null; srTermDel = null; render(); return; }
@@ -2242,6 +2258,7 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
+  if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
   if(el.dataset.subpaid!==undefined){
     const it = findItem(el.dataset.subpaid); if(!it || !it.sub) return;
     setSub(el.dataset.subpaid, {...it.sub, paid: el.checked}); toast(el.checked ? `已標記轉給 ${it.sub.name}` : '改回待轉'); return;
