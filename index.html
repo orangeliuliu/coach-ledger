@@ -98,6 +98,11 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.toast.warn{background:var(--off);color:#fff}
+.srcell.over{border-color:var(--off);background:var(--off-soft)}
+.srcell.over em{font-style:normal;font-size:11px;color:var(--off);font-weight:700}
+.attbtn.over{border-color:var(--off);color:var(--off)}
+.srover{padding:8px 10px;border-radius:8px;background:var(--off-soft);color:var(--off);font-weight:700;font-size:14px}
 #rec-year{padding-bottom:14px}
 .ytable tr.ycat td{background:var(--surface-2);font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted)}
 .ytable td:first-child{font-family:var(--body);white-space:nowrap}
@@ -1279,7 +1284,7 @@ function renderLog(days){
       html += `<div class="row ${it.status}${busy?' busy':''}${subbed?' subbed':''}">
         <div class="time">${esc(it.time)}<small>${it.dur} 分</small></div>
         <div class="what"><b>${esc(it.content)}${it.extra?'<span class="x">加課</span>':''}${it.orphan?'<span class="x">舊課表</span>':''}</b><span>${esc(it.place)}${it.kind?' · '+esc(it.kind):''}</span>${subbed?`<span class="subline">代課：${esc(it.sub.name)} · 轉 NT$${money(subAmt(it))} · ${it.sub.paid?'已轉':'<b>待轉</b>'}</span>`:''}</div>
-        <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${(it.sr.makeup.length+it.sr.guest.length)?` · 補 ${it.sr.makeup.length+it.sr.guest.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
+        <div class="pay">${isPrivate(it.content) && isTimeBased(privName(it.content)) ? `<label class="minsl" for="m-${id}"><input class="minsin${it.mins!==it.dur?' changed':''}" id="m-${id}" type="number" inputmode="numeric" min="0" step="5" value="${it.mins}" data-key="${esc(it.key)}" aria-label="上了幾分鐘">分</label>`:''}${it.sr && it.status==='held' ? `<button class="btn small attbtn${it.sr.over?' over':''}" data-srp="${esc(it.key)}" aria-expanded="${srOpen===it.key}">${it.sr.over?'⚠ ':''}點名 ${it.sr.present} 人${it.sr.leave.length?` · 假 ${it.sr.leave.length}`:''}${(it.sr.makeup.length+it.sr.guest.length)?` · 補 ${it.sr.makeup.length+it.sr.guest.length}`:''}${it.sr.single.length?` · 單 ${it.sr.single.length}`:''}</button>`:''}<label for="${id}">NT$<input class="payin${it.pay!==it.base?' changed':''}" id="${id}" type="number" inputmode="numeric" min="0" step="50" value="${it.pay}" data-key="${esc(it.key)}"></label></div>
         <div class="act">
           <button class="seg yes" aria-pressed="${it.status==='held'}" data-key="${esc(it.key)}" data-s="held">有開</button>
           <button class="seg no" aria-pressed="${it.status==='off'}" data-key="${esc(it.key)}" data-s="off">停課</button>
@@ -1466,6 +1471,13 @@ function shareOf(t, st, off, key){
   return out[key] || 0;
 }
 const moOf = mk => mk===monthKey ? month : normMonth(lsGet('months/'+mk) || emptyMonth());
+// 每堂人數上限 (default 16): sessions over it are flagged and adding someone over it warns
+const srCap = t => (t && t.cap) || 16;
+// after a change: warn if the session is now over the limit
+function srCapWarn(key){
+  const s = srSession(key.slice(0,10), key.slice(11)); if(!s || !s.over || s.status!=='held') return false;
+  warnToast(`⚠ ${md(s.ds)} ${srShort(s.cid)} 現在 ${s.present} 人，超過上限 ${s.cap} 人`); return true;
+}
 function srSession(ds, cid, mo){
   const t = termOf(ds); if(!t) return null;
   const key = ds+'_'+cid;
@@ -1480,7 +1492,8 @@ function srSession(ds, cid, mo){
   const value = Math.round(fees + singles - (t.venue||0));
   return {t, ds, cid, key, enrolled, leave, makeup, guest, single, fees:Math.round(fees), singles,
     present: enrolled.length - leave.length + makeup.length + guest.length + single.length,
-    status: e.s==='off' ? 'off' : 'held', value, pay: e.pay ?? value};
+    status: e.s==='off' ? 'off' : 'held', value, pay: e.pay ?? value,
+    cap: srCap(t), over: enrolled.length - leave.length + makeup.length + guest.length + single.length > srCap(t)};
 }
 // change one session's attendance, whichever month it is in
 function srEdit(key, fn){
@@ -1636,6 +1649,7 @@ function srPanel(key){
   const gnames = [...new Set((selfrun.terms||[]).flatMap(x=>termSessions(x)).flatMap(x=>x.guest.map(y=>y.name)).filter(Boolean))];
   const names = [...new Set(termSessions(t).flatMap(x=>x.single.map(y=>y.name)).filter(Boolean))];
   return `<div class="attpanel srpanel">
+    ${s.over?`<div class="srover">⚠ 這堂 ${s.present} 人，超過上限 ${s.cap} 人</div>`:''}
     <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，逐日記錄也會變停課">這堂停課</button></span></div>
     <div class="attgrid">${s.enrolled.map(st=>{ const lv = s.leave.includes(st.id);
       return `<label class="attm${lv?' leave':''}"><input type="checkbox" data-srlv="${esc(key)}|${st.id}"${lv?'':' checked'}>${esc(st.name)}${lv?'<small>請假</small>':''}</label>`; }).join('') || '<span class="hint">這堂沒有期課學員</span>'}</div>
@@ -1697,7 +1711,7 @@ function renderSelf(){
       const s = sessions.find(x=>x.ds===ds && x.cid===cid); if(!s) return '<td></td>';
       if(s.status==='off') return `<td><button class="srcell off" data-sroff="${esc(s.key)}|held" title="恢復成有開"><b>停課</b><span class="srtags">點一下恢復</span></button></td>`;
       const tags = [s.leave.length?`假 ${s.leave.length}`:'', (s.makeup.length+s.guest.length)?`補 ${s.makeup.length+s.guest.length}`:'', s.single.length?`單 ${s.single.length}`:''].filter(Boolean).join(' · ');
-      return `<td><button class="srcell${ds>TODAY?' fut':''}" data-srp="${esc(s.key)}" aria-expanded="${srOpen===s.key}"><b>${s.present} 人</b><span class="srtags">${tags||'全到'}</span><span class="num">NT$${money(s.pay)}</span></button></td>`;
+      return `<td><button class="srcell${ds>TODAY?' fut':''}${s.over?' over':''}" data-srp="${esc(s.key)}" aria-expanded="${srOpen===s.key}"><b>${s.present} 人${s.over?` <em>超過 ${s.cap}</em>`:''}</b><span class="srtags">${tags||'全到'}</span><span class="num">NT$${money(s.pay)}</span></button></td>`;
     }).join('');
     const open = selfrun.cids.map(cid=>ds+'_'+cid).find(k=>k===srOpen);
     return `<tr class="${ds===TODAY?'today':''}"><th scope="row">${md(ds)}${ds.slice(0,7)===monthKey?'':`<small>${Number(ds.slice(5,7))}月</small>`}</th>${cells}</tr>`
@@ -1750,6 +1764,7 @@ function renderSelf(){
         <label>兩種課程 NT$<input class="field" type="number" min="0" step="100" inputmode="numeric" value="${(t.price||{}).both||0}" data-srset="both"></label>
         <label>單堂 NT$<input class="field" type="number" min="0" step="10" inputmode="numeric" value="${t.single||0}" data-srset="single"></label>
         <label>場地費（每堂）NT$<input class="field" type="number" min="0" step="50" inputmode="numeric" value="${t.venue||0}" data-srset="venue"></label>
+        <label>每堂人數上限<input class="field" type="number" min="1" step="1" inputmode="numeric" value="${srCap(t)}" data-srset="cap"></label>
       </div>
       <div class="srdates">
         <span class="hint">${esc(t.name)}上課日期（兩堂課同一天）：</span>
@@ -2225,7 +2240,8 @@ function renderSched(){
 
 /* ---------- events ---------- */
 let toastT;
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,1800); }
+function warnToast(msg){ const t=$('#toast'); t.textContent=msg; t.hidden=false; t.classList.add('warn'); clearTimeout(toastT); toastT=setTimeout(()=>{ t.hidden=true; t.classList.remove('warn'); },5000); }
+function toast(msg){ $('#toast').classList.remove('warn');  const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,1800); }
 function shiftMonth(n){
   const [y,m] = monthKey.split('-').map(Number);
   const d = new Date(y, m-1+n, 1);
@@ -2387,7 +2403,7 @@ document.addEventListener('change', e=>{
   }
   if(el.dataset.srlv!==undefined){
     const i = el.dataset.srlv.lastIndexOf('|'), k = el.dataset.srlv.slice(0,i), id = el.dataset.srlv.slice(i+1);
-    srEdit(k, a=>{ a.leave = (a.leave||[]).filter(x=>x!==id); if(!el.checked) a.leave.push(id); }); render(); return;
+    srEdit(k, a=>{ a.leave = (a.leave||[]).filter(x=>x!==id); if(!el.checked) a.leave.push(id); }); render(); if(el.checked) srCapWarn(k); return;
   }
   if(el.dataset.srpkg!==undefined){
     const {t:tm, st} = stuOf(el.dataset.srpkg); if(!st) return;
@@ -2496,7 +2512,7 @@ document.addEventListener('submit', e=>{
   if(f.classList.contains('srmk')){
     const k = f.dataset.key, id = f.elements.s.value; if(!id) return;
     srEdit(k, a=>{ a.makeup = (a.makeup||[]).filter(x=>x!==id); a.makeup.push(id); });
-    render(); toast(`已登記 ${(stuOf(id).st||{}).name||''} ${md(k.slice(0,10))} 補課`); return;
+    render(); if(srCapWarn(k)) return; toast(`已登記 ${(stuOf(id).st||{}).name||''} ${md(k.slice(0,10))} 補課`); return;
   }
   if(f.classList.contains('srgs')){
     const k = f.dataset.key, name = f.elements.n.value.trim(); if(!name) return;
@@ -2510,20 +2526,23 @@ document.addEventListener('submit', e=>{
       srEdit(when, a=>{ a.leave = a.leave || []; if(!a.leave.includes(who)){ a.leave.push(who); added = true; } });
       if(added) g.auto = true; }
     srEdit(k, a=>{ (a.guest = a.guest || []).push(g); });
-    render(); toast(`已登記 ${name} ${md(k.slice(0,10))} 代補 ${(stuOf(who).st||{}).name||''} ${md(when.slice(0,10))} ${srShort(when.slice(11))} 的假${g.auto?'（已一併登記請假）':''}`); return;
+    render(); if(srCapWarn(k)) return; toast(`已登記 ${name} ${md(k.slice(0,10))} 代補 ${(stuOf(who).st||{}).name||''} ${md(when.slice(0,10))} ${srShort(when.slice(11))} 的假${g.auto?'（已一併登記請假）':''}`); return;
   }
   if(f.classList.contains('srsg') || f.classList.contains('srsg2')){
     const k = f.dataset.key || f.elements.k.value; if(!k) return;
     const entry = {name:f.elements.n.value.trim(), amount:Math.max(0, Math.round(Number(f.elements.a.value)||0))};
     srEdit(k, a=>{ (a.single = a.single || []).push(entry); });
-    render(); toast(`已加入 ${md(k.slice(0,10))} ${srShort(k.slice(11))} 單堂${entry.name?' · '+entry.name:''}`); return;
+    render(); if(srCapWarn(k)) return; toast(`已加入 ${md(k.slice(0,10))} ${srShort(k.slice(11))} 單堂${entry.name?' · '+entry.name:''}`); return;
   }
   if(f.classList.contains('sradd')){
     const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(!tm) return;
     const el = f.elements, name = el.n.value.trim(); if(!name) return;
     if(tm.students.some(st=>st.name===name)){ toast(`${name} 已經在名單上了`); return; }
     tm.students.push({id:'s'+Date.now().toString(36), name, pkg:el.p.value, fee:Math.max(0, Math.round(Number(el.f.value)||0)), paid:el.d.value || TODAY, from:el.s.value || tm.dates[0]});
-    saveSelfrun(); render(); toast(`已新增 ${name}`); return;
+    saveSelfrun(); render();
+    const over = termSessions(tm).filter(x=>x.over && x.status==='held' && x.ds>=TODAY);
+    if(over.length){ warnToast(`⚠ 已新增 ${name}。注意：有 ${over.length} 堂超過上限 ${srCap(tm)} 人：${over.slice(0,4).map(x=>`${md(x.ds)} ${srShort(x.cid)}`).join('、')}${over.length>4?'…':''}`); return; }
+    toast(`已新增 ${name}`); return;
   }
   if(f.classList.contains('srnew')){
     const el = f.elements, n = Math.max(1, Math.min(30, Math.round(Number(el.n.value)||0)));
