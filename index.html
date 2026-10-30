@@ -132,6 +132,7 @@ form.inline .field.num{width:80px}
 .subdue{color:var(--off)}
 .subform{display:flex;flex-wrap:wrap;gap:8px;align-items:end;padding:10px 14px 12px 88px;border-top:1px dashed var(--line);background:var(--surface-2)}
 .subform .hint{flex-basis:100%;font-size:12px;color:var(--muted)}
+.subform .subrule{flex-basis:100%;font-size:13px;line-height:1.6;padding:8px 10px;border-radius:8px;background:var(--wait-soft);color:var(--ink)}
 .subform label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
 .subform .field{width:auto}.subform input[name=n]{width:140px}.subform input[name=a]{width:110px}
 .subform .btns{display:flex;gap:6px}
@@ -583,7 +584,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261030_5</footer>
+  <footer class="appver">ver 20261030_7</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1154,13 +1155,13 @@ function findItem(key){
   for(const day of daysOfMonth()) for(const it of day.items) if(it.key===key) return it;
   return null;
 }
-function setStatus(key, s){   // s: 'held' | 'off'
+function setStatus(key, s){   // s: 'held' | 'off'  — 停課 also drops any 代課 on that class (nothing to pass on)
   const x = month.extras.find(x=>x.id===key);
-  if(x){ x.s = s; saveMonth(); render(); return; }
+  if(x){ x.s = s; if(s==='off') delete x.sub; saveMonth(); render(); return; }
   const it = findItem(key); if(!it) return;
   const e = {...(month.entries[key]||{})};
   e.snap = e.snap || snapOf(it);
-  if(s==='off') e.s = 'off'; else delete e.s;
+  if(s==='off'){ e.s = 'off'; delete e.sub; } else delete e.s;
   month.entries[key] = e;
   saveMonth(); render();
 }
@@ -1287,7 +1288,7 @@ function renderLog(days){
   const blank = !schedule.length && !hasRecords(allData());
   let html = (blank ? `<div class="card emptystate"><b>還沒有資料</b><p>這個網頁本身不含任何課表或學員資料。請按右上角「連線 Google 雲端硬碟」載入雲端的資料，或從「備份選項」→「從備份檔還原」匯入備份 .json。</p></div>` : '')
     + calendarHTML(days) + `<div class="toolbar" style="margin-top:14px">
-    <span class="hint">每堂課預設都算「有開」，沒上的課按「停課」，再按一次就恢復。金額可以直接改。</span>
+    <span class="hint">每堂課預設都算「有開」，沒上的課按「停課」，再按一次就恢復。金額可以直接改。<br>教練請假找代課：<b>場館自己找人、自己付錢 → 按「停課」</b>；<b>場館付給教練、教練再轉給代課老師 → 按「代課」</b>。</span>
     <span style="display:flex;gap:8px;flex-wrap:wrap">
       ${isThisMonth?'<button class="btn" id="jumpToday">跳到今天</button>':''}
     </span></div>`;
@@ -1323,7 +1324,7 @@ function renderLog(days){
       </div>`;
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
       if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
-        <span class="hint">教練請假、找人代課：這堂照樣跟單位對帳，錢收到後轉給代課老師。</span>
+        <span class="subrule">⚠ 場館自己找人、自己付錢 → 不要記代課，按「<b>停課</b>」<br>✓ 場館付給教練、教練再轉給代課老師 → 在這裡記代課</span>
         <label>代課老師<input class="field" name="n" required list="dl-subn" value="${esc(it.sub?it.sub.name:'')}"></label>
         <label>轉給他 NT$<input class="field num" name="a" type="number" min="0" step="50" inputmode="numeric" value="${subAmt(it) || it.pay}" required></label>
         <div class="btns"><button class="btn primary" type="submit">儲存</button>${it.sub?`<button class="btn" type="button" data-subdel="${esc(it.key)}">取消代課</button>`:''}<button class="btn" type="button" data-subcancel="1">關閉</button></div>
