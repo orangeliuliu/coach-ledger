@@ -577,7 +577,7 @@ td.src>span{display:block}
   </nav>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261030_3</footer>
+  <footer class="appver">ver 20261030_4</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1229,10 +1229,10 @@ function axUpdate(){
   const place = $('#ax-place').value.trim(), name = $('#ax-student').value.trim();
   let hint;
   if(pv){
-    if(!name) hint = '會算在：私教課（請選學生）';
+    if(!name) hint = '→ 對帳：私教課（請選學生）';
     else { const known = privateNames().includes(name), mode = modeOf(name);
-      hint = `會算在：私教課 · ${name}（${known?MODES[mode]:'新學生，預設月結'}${mode==='prepaid'?`，會扣${unitOf(name)==='time'?'上課時數':' 1 堂'}`:''}）· 列入財務頁`; }
-  } else hint = `會算在：團體課${place?` · ${place}`:''}（對帳照地點合計，不列入財務頁）`;
+      hint = `→ 對帳：私教課 · ${name}（${known?MODES[mode]:'新學生，月結'}${mode==='prepaid'?`，扣${unitOf(name)==='time'?'時數':' 1 堂'}`:''}）`; }
+  } else hint = `→ 對帳：團體課${place?` · ${place}`:'（請填地點）'}`;
   $('#ax-hint').textContent = hint;
 }
 function pickOptions(){
@@ -1340,7 +1340,7 @@ function renderLog(days){
         <label>地點<input class="field" id="ax-place" autocomplete="off" list="dl-ax-place" placeholder="選現有地點或自己輸入" required>${placeList('dl-ax-place')}</label>
         <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" required></label>
         <div class="btns"><button class="btn primary" type="submit">加入</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
-        <p class="full axhint" id="ax-hint">會算在：團體課（對帳照地點合計）</p>
+        <p class="full axhint" id="ax-hint">→ 對帳：團體課（請填地點）</p>
       </form>`;
     } else {
       html += `<div class="addrow"><button class="addlink" data-add="${day.ds}">＋ 加一堂臨時課 / 代課</button></div>`;
