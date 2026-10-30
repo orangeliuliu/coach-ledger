@@ -98,6 +98,7 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.appver{margin:28px 0 12px;text-align:center;font-size:11px;color:var(--muted);font-family:var(--num);letter-spacing:.04em}
 .toast.warn{background:var(--off);color:#fff}
 .srcell.over{border-color:var(--off);background:var(--off-soft)}
 .srcell.over em{font-style:normal;font-size:11px;color:var(--off);font-weight:700}
@@ -565,6 +566,7 @@ td.src>span{display:block}
   </nav>
 
   <main id="view"></main>
+  <footer class="appver">ver 20261030_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1196,8 +1198,8 @@ function render(){
 // every private student the ledger knows: from the schedule, this month's extra classes and the payment settings
 function privateNames(){
   const set = new Set();
-  schedule.forEach(c=>{ if(isPrivate(c.content) && clientOf(c.content)) set.add(clientOf(c.content)); });
-  month.extras.forEach(x=>{ if(isPrivate(x.content) && clientOf(x.content)) set.add(clientOf(x.content)); });
+  schedule.forEach(c=>{ if(isPrivate(c.content) && clientOf(c.content)) set.add(privName(c.content)); });
+  month.extras.forEach(x=>{ if(isPrivate(x.content) && clientOf(x.content)) set.add(privName(x.content)); });
   Object.keys(prepaid.students).forEach(n=>set.add(n));
   set.delete('未寫名字');
   return [...set].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
@@ -1316,7 +1318,7 @@ function renderLog(days){
           <label><input type="radio" name="ax-type" value="private"> 私教課</label></div>
         <label class="wide" id="ax-content-wrap">上課內容<input class="field" id="ax-content" autocomplete="off" placeholder="例：代課 body pump"></label>
         <label class="wide" id="ax-student-wrap" hidden>學生<input class="field" id="ax-student" autocomplete="off" list="dl-ax-student" placeholder="選或輸入學生名字"><datalist id="dl-ax-student">${privateNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
-        <label>地點<input class="field" id="ax-place" autocomplete="off" placeholder="例：XX 運動中心" required></label>
+        <label>地點<input class="field" id="ax-place" autocomplete="off" list="dl-ax-place" placeholder="選現有地點或自己輸入" required>${placeList('dl-ax-place')}</label>
         <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" required></label>
         <div class="btns"><button class="btn primary" type="submit">加入</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
         <p class="full axhint" id="ax-hint">會算在：團體課（對帳照地點合計）</p>
@@ -1337,8 +1339,8 @@ function sources(days){
   days.forEach(d=>d.items.forEach(it=>{
     if(it.selfrun) return;   // 自營團課 has its own section
     const cat = isPrivate(it.content) ? 'private' : 'group';
-    const place = (it.place||'').trim();
-    const client = cat==='private' ? (clientOf(it.content) || '未寫名字') : '';
+    const place = canonPlace(it.place);
+    const client = cat==='private' ? privName(it.content) : '';
     const k = cat+'｜'+place+(client?'｜'+client:'');
     if(!map.has(k)) map.set(k,{key:k, cat, place, client, classes:new Set(), held:0, heldN:0, offN:0});
     const s = map.get(k);
@@ -1371,10 +1373,16 @@ function rangeDays(start, end){
   }
   return out;
 }
-const cutSelect = place => { const c = (billing.places[place]||{}).cut || 0;
+function cutOf(place){ const n = normKey(place), k = Object.keys(billing.places||{}).find(k=>normKey(k)===n); return k ? (billing.places[k].cut||0) : 0; }
+const cutSelect = place => { const c = cutOf(place);
   return `<label class="modesel">結算<select class="field" data-cut="${esc(place)}" aria-label="${esc(place)} 結算區間"><option value="0"${c?'':' selected'}>整月</option>${Array.from({length:28},(_,i)=>i+1).map(n=>`<option value="${n}"${c===n?' selected':''}>每月 ${n} 號結</option>`).join('')}</select></label>`; };
 // Received amount: only what the user actually typed; empty means not reconciled yet
-const isRecvSet = s => { const r = month.received[s.key]; return !(r==null || r===''); };
+// 實收 typed under another spelling of the same venue / student still belongs to this row
+function recvKeyOf(s){
+  if(month.received[s.key]!=null) return s.key;
+  const n = normKey(s.key); return Object.keys(month.received).find(k=>normKey(k)===n) || s.key;
+}
+const isRecvSet = s => { const r = month.received[recvKeyOf(s)]; return !(r==null || r===''); };
 function diffText(d){
   if(d===0) return '<span class="chip ok">相符</span>';
   if(d<0) return `<span class="chip bad">少 ${money(-d)}</span>`;
@@ -1397,7 +1405,29 @@ function loadPrepaid(){
   if(changed) lsSet('config/prepaid', prepaid);
 }
 const savePrepaid = () => queue('config/prepaid', prepaid);
-const privName = content => clientOf(content) || '未寫名字';
+// Places and student names are compared ignoring 大小寫, 全形/半形 and extra spaces, so "南京復興 jexer" and
+// "南京復興　Jexer" are the same venue. The spelling shown is the one on the weekly schedule (or the payment settings).
+const normKey = s => String(s||'').normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim();
+function canonPlace(p){
+  const raw = String(p||'').trim(), n = normKey(raw); if(!n) return raw;
+  const c = schedule.find(c=>normKey(c.place)===n); if(c) return c.place.trim();
+  const x = (month.extras||[]).find(x=>normKey(x.place)===n); if(x) return x.place.trim();
+  return raw;
+}
+function canonName(nm){
+  const n = normKey(nm); if(!n || (typeof prepaid!=='undefined' && prepaid.students[nm])) return nm;
+  if(typeof prepaid!=='undefined'){ const k = Object.keys(prepaid.students).find(k=>normKey(k)===n); if(k) return k; }
+  const c = schedule.find(c=>isPrivate(c.content) && normKey(clientOf(c.content))===n); if(c) return clientOf(c.content);
+  return nm;
+}
+const privName = content => canonName(clientOf(content) || '未寫名字');
+// every venue on the schedule and this month's extra classes (for the 地點 suggestions)
+function allPlaces(){
+  const seen = new Map();
+  [...schedule.filter(c=>!c.until || c.until>=TODAY), ...(month.extras||[])].forEach(c=>{ const n = normKey(c.place); if(n && !seen.has(n)) seen.set(n, c.place.trim()); });
+  return [...seen.values()].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+}
+const placeList = id => `<datalist id="${id}">${allPlaces().map(p=>`<option value="${esc(p)}">`).join('')}</datalist>`;
 const modeOf = name => { const st = prepaid.students[name]; return !st ? 'monthly' : (st.mode || (st.on ? 'prepaid' : 'monthly')); };
 const isPrepaid = name => modeOf(name)==='prepaid';
 // Prepaid students are charged per class (按堂數, −1 each) or by time (按時間, −minutes/60 hours)
@@ -1585,7 +1615,7 @@ function balanceChip(l, comingThisMonth, U='堂'){
   return '<span class="chip ok">足夠</span>';
 }
 function unitPriceOf(name){
-  const c = schedule.find(c=>isPrivate(c.content) && clientOf(c.content)===name && (!c.until || c.until>=TODAY));
+  const c = schedule.find(c=>isPrivate(c.content) && privName(c.content)===name && (!c.until || c.until>=TODAY));
   return c ? c.pay : 0;
 }
 
@@ -1965,7 +1995,7 @@ function yearData(year){
       if(it.status!=='held') return;
       if(it.sr) add('自營團課', srShort(it.sr.cid)+'（每堂淨額）', mk, it.pay);
       else if(isPrivate(it.content)) add('私教課', privName(it.content), mk, it.pay);
-      else add('團體課', (it.place||'').trim() || '（沒寫地點）', mk, it.pay);
+      else add('團體課', canonPlace(it.place) || '（沒寫地點）', mk, it.pay);
       if(it.sub) sub[mk] = (sub[mk]||0) + subAmt(it);
     }); });
     const f = finMonth(mk, mk===nowMk ? TODAY : undefined);
@@ -2044,11 +2074,11 @@ function subSection(days){
 function renderRec(days){
   // venues with their own 結算區間 are counted over that period instead of the calendar month
   const cuts = billing.places || {};
-  const all = sources(days).filter(s=>!(s.cat==='group' && (cuts[s.place]||{}).cut));
+  const all = sources(days).filter(s=>!(s.cat==='group' && cutOf(s.place)));
   Object.entries(cuts).forEach(([place, c])=>{
     if(!c || !c.cut) return;
     const [a,b] = periodOf(c.cut);
-    sources(rangeDays(a, b)).filter(s=>s.cat==='group' && s.place===place).forEach(s=>{ s.period = [a,b]; s.partial = a < START_MONTH+'-01'; all.push(s); });
+    sources(rangeDays(a, b)).filter(s=>s.cat==='group' && normKey(s.place)===normKey(place)).forEach(s=>{ s.period = [a,b]; s.partial = a < START_MONTH+'-01'; all.push(s); });
   });
   all.sort((x,y)=>y.held-x.held);
   const [my,mm] = monthKey.split('-').map(Number);
@@ -2063,7 +2093,7 @@ function renderRec(days){
     const T = {held:0, heldN:0, recv:0, dueOfFilled:0, filled:0};
     const rows = list.map(s=>{
       const i = idx++;
-      const set = isRecvSet(s), r = set ? Number(month.received[s.key]) : null;
+      const set = isRecvSet(s), r = set ? Number(month.received[recvKeyOf(s)]) : null;
       T.held+=s.held; T.heldN+=s.heldN;
       if(set){ T.recv+=r; T.dueOfFilled+=s.held; T.filled++; }
       const name = sec.private ? s.client : s.place;
@@ -2223,7 +2253,7 @@ function renderSched(){
       <td><select class="field w-dow" id="s-${c.id}-dow" data-id="${c.id}" data-f="dow">${order.map(d=>`<option value="${d}"${d===c.dow?' selected':''}>週${DOW[d]}</option>`).join('')}</select></td>
       <td><input class="field w-time num" id="s-${c.id}-time" type="time" value="${esc(c.time)}" data-id="${c.id}" data-f="time"></td>
       <td><input class="field w-dur num" id="s-${c.id}-dur" type="number" min="0" step="5" value="${c.dur}" data-id="${c.id}" data-f="dur"></td>
-      <td><input class="field" id="s-${c.id}-place" value="${esc(c.place)}" data-id="${c.id}" data-f="place"></td>
+      <td><input class="field" id="s-${c.id}-place" value="${esc(c.place)}" data-id="${c.id}" data-f="place" list="dl-sched-place" autocomplete="off"></td>
       <td><input class="field" id="s-${c.id}-content" value="${esc(c.content)}" data-id="${c.id}" data-f="content"></td>
       <td><input class="field w-pay num" id="s-${c.id}-pay" type="number" min="0" step="50" value="${c.pay}" data-id="${c.id}" data-f="pay"></td>
       <td><button class="del" aria-label="刪除這堂課" title="從每週課表刪除" data-sdel="${c.id}">×</button></td>
@@ -2235,7 +2265,7 @@ function renderSched(){
     <p class="note" style="margin-top:8px">這是每個月自動展開的固定課表。在這裡新增、修改或刪除，只會影響今天以後的課，今天以前的帳不會變。以前某一天的課不一樣，請到「逐日記錄」那一天改金額、按停課或加臨時課。</p>
     <div class="card tablewrap sched" style="margin-top:8px"><table>
       <thead><tr><th>星期</th><th>時間</th><th>分鐘</th><th>地點</th><th>上課內容</th><th>薪水</th><th></th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <tbody>${rows}</tbody></table>${placeList('dl-sched-place')}</div>`;
 }
 
 /* ---------- events ---------- */
@@ -2440,7 +2470,7 @@ document.addEventListener('change', e=>{
     set('ax-time', c.time); set('ax-dur', c.dur); set('ax-content', c.content); set('ax-place', c.place); set('ax-pay', c.pay);
     const pv = isPrivate(c.content);
     document.querySelector(`.addform input[name=ax-type][value=${pv?'private':'group'}]`).checked = true;
-    set('ax-student', pv ? clientOf(c.content) : '');
+    set('ax-student', pv ? privName(c.content) : '');
     axUpdate(); return;
   }
   if(el.name==='ax-type'){ axUpdate(); return; }
@@ -2450,12 +2480,14 @@ document.addEventListener('change', e=>{
   if(el.dataset.unitFor!==undefined){ const n=el.dataset.unitFor; const st=prepaid.students[n]||(prepaid.students[n]={entries:[]}); st.unit=el.value; savePrepaid(); render(); toast(`${n} 改成${el.value==='time'?'按時間扣（小時）':'按堂數扣'}`); return; }
   if(el.dataset.cut!==undefined){
     const place = el.dataset.cut, v = Math.round(Number(el.value)||0);
-    if(v) billing.places[place] = {cut:v}; else delete billing.places[place];
+    Object.keys(billing.places).forEach(k=>{ if(normKey(k)===normKey(place)) delete billing.places[k]; });
+    if(v) billing.places[place] = {cut:v};
     saveBilling(); render(); toast(v ? `${place} 改成每月 ${v} 號結算（上月 ${v+1} 號～本月 ${v} 號）` : `${place} 改回整月對帳`); return;
   }
   if(el.classList.contains('recv')){
     const v = el.value.trim();
-    if(v==='') delete month.received[el.dataset.src]; else month.received[el.dataset.src] = Math.round(Number(v)||0);
+    const src = el.dataset.src; Object.keys(month.received).forEach(k=>{ if(normKey(k)===normKey(src)) delete month.received[k]; });   // one entry per row
+    if(v!=='') month.received[src] = Math.round(Number(v)||0);
     saveMonth(); render(); return;
   }
   if(el.dataset.f && el.dataset.id){
