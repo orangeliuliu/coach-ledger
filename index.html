@@ -300,7 +300,11 @@ button{cursor:pointer}
 @media (max-width:480px){.stat{padding:12px}.stat .val{font-size:23px}.stat .val .cur{font-size:13px}}
 
 /* tabs */
-.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:6px;display:flex;gap:6px;border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.tabbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
+.tabs{flex:1 1 auto;min-width:0;padding-block:6px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.histtab{flex:none;display:grid;place-items:center;width:38px;height:36px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer}
+.histtab:hover{background:var(--surface-2);color:var(--ink)}
+.histtab[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .tab{border:0;background:transparent;padding:8px 12px;white-space:nowrap;border-radius:9px;font-weight:500;color:var(--muted)}
 .tab[aria-selected="true"]{background:var(--ink);color:var(--bg)}
 .tab:not([aria-selected="true"]):hover{background:var(--surface-2);color:var(--ink)}
@@ -551,7 +555,6 @@ td.src>span{display:block}
           <div class="menu">
             <button type="button" id="driveFolderBtn" hidden>打開雲端資料夾（每月備份）</button>
             <button type="button" id="driveRestoreBtn" hidden>從雲端硬碟載回資料</button>
-            <button type="button" id="histBtn">修改紀錄</button>
             <button type="button" id="exportBtn">匯出備份檔</button>
             <button type="button" id="importBtn">從備份檔還原</button>
             <button type="button" id="driveOffBtn" class="danger" hidden>中斷雲端硬碟連線</button>
@@ -568,6 +571,7 @@ td.src>span{display:block}
   </div>
   <section class="summary" id="summary" aria-label="本月摘要"></section>
 
+  <div class="tabbar">
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" id="tab-log" aria-selected="true" data-tab="log">逐日記錄</button>
     <button class="tab" role="tab" id="tab-rec" aria-selected="false" data-tab="rec">對帳</button>
@@ -575,9 +579,11 @@ td.src>span{display:block}
     <button class="tab" role="tab" id="tab-fin" aria-selected="false" data-tab="fin">財務</button>
     <button class="tab" role="tab" id="tab-sch" aria-selected="false" data-tab="sch">每週課表</button>
   </nav>
+  <button class="histtab" id="histTab" type="button" aria-label="修改紀錄" title="修改紀錄" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></button>
+  </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261030_4</footer>
+  <footer class="appver">ver 20261030_5</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1201,6 +1207,7 @@ function render(){
     <div class="stat"><span class="lab">${isPastMonth?'整月已上完':'到今天為止已上'}</span><span class="val num"><span class="cur">NT$</span>${money(isFuture?0:soFar)}</span><span class="sub">${isPastMonth?'這個月已結束':isFuture?'還沒開始':'含今天'}</span></div>
     <div class="stat"><span class="lab">課表全開的話</span><span class="val num"><span class="cur">NT$</span>${money(t.all)}</span><span class="sub">本月共 ${t.n} 堂${t.xAll ? `（含加課 ${t.xAll} 堂）` : ""}</span></div>`;
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected', b.dataset.tab===tab));
+  $('#histTab').setAttribute('aria-pressed', tab==='hist');
   const focusId = document.activeElement && document.activeElement.id;
   if(tab==='log') renderLog(days);
   else if(tab==='rec') renderRec(days);
@@ -2832,7 +2839,8 @@ month = normMonth(lsGet(monthPath()) || emptyMonth());
 render(); refreshSaveState();
 const closeMenu = () => { $('#moreMenu').open = false; };
 $('#exportBtn').onclick = () => { closeMenu(); exportBackup(); };
-$('#histBtn').onclick = () => { closeMenu(); histDay = null; tab = 'hist'; render(); window.scrollTo(0,0); };
+let tabBeforeHist = 'log';
+$('#histTab').onclick = () => { if(tab==='hist'){ tab = tabBeforeHist; render(); return; } tabBeforeHist = tab; histDay = null; tab = 'hist'; render(); window.scrollTo(0,0); };
 $('#importBtn').onclick = () => { closeMenu(); $('#importFile').click(); };
 $('#importFile').onchange = e=>{ const f=e.target.files[0]; if(f) importBackup(f); e.target.value=''; };
 $('#driveBtn').onclick = () => {
