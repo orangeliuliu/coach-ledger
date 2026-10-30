@@ -98,6 +98,16 @@ form.inline .field.num{width:80px}
 .sgchip small{font-size:11px;color:var(--muted);margin-left:4px;font-family:var(--body)}
 .srguestrow form.inline input[name=n]{width:110px}.srguestrow form.inline select{max-width:220px}.srguestrow form.inline input[name=note]{width:150px}
 .finsec{padding-bottom:14px}
+.histbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
+.histbar label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
+.histbar .field{width:auto}.histbar input[type=search]{flex:1 1 200px}
+.histday{padding:0 16px}
+.histdate{font-weight:700;font-size:13px;color:var(--muted);padding:8px 0 4px;border-top:1px solid var(--line)}
+.histlist{list-style:none;margin:0 0 6px;padding:0;display:flex;flex-direction:column;gap:4px}
+.histlist li{display:grid;grid-template-columns:44px 52px 1fr;gap:8px;font-size:14px;align-items:baseline}
+.histlist .ht{font-family:var(--num);font-variant-numeric:tabular-nums;color:var(--muted)}
+.histlist .hd{font-size:11px;color:var(--muted)}
+.histlink{display:inline;margin-left:auto;margin-right:8px;font-size:12px}
 .appver{margin:28px 0 12px;text-align:center;font-size:11px;color:var(--muted);font-family:var(--num);letter-spacing:.04em}
 .toast.warn{background:var(--off);color:#fff}
 .srcell.over{border-color:var(--off);background:var(--off-soft)}
@@ -541,6 +551,7 @@ td.src>span{display:block}
           <div class="menu">
             <button type="button" id="driveFolderBtn" hidden>打開雲端資料夾（每月備份）</button>
             <button type="button" id="driveRestoreBtn" hidden>從雲端硬碟載回資料</button>
+            <button type="button" id="histBtn">修改紀錄</button>
             <button type="button" id="exportBtn">匯出備份檔</button>
             <button type="button" id="importBtn">從備份檔還原</button>
             <button type="button" id="driveOffBtn" class="danger" hidden>中斷雲端硬碟連線</button>
@@ -566,7 +577,7 @@ td.src>span{display:block}
   </nav>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261030_2</footer>
+  <footer class="appver">ver 20261030_3</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -949,6 +960,7 @@ async function restoreFromDrive(){
     if(!window.confirm(`用雲端硬碟上的資料（${String(remote.exportedAt||'').slice(0,16).replace('T',' ')}，${months} 個月的記錄）取代這支手機上的資料？`)){ refreshSaveState(); return; }
     let meta = null; try{ meta = await getRemoteMeta(); }catch(e){}
     pullRemote(remote, meta); drive.conflict = null; renderConflict();
+    appendLog([{m:'從雲端硬碟載回資料（取代這台的資料）'}]); scheduleSync(); render();
     refreshSaveState(); toast('已從雲端硬碟載回資料');
   }catch(e){ driveErr(e); refreshSaveState(); }
 }
@@ -959,7 +971,10 @@ function disconnectDrive(){
   lsDel('meta/token'); saveDriveMeta(); refreshSaveState(); toast('已中斷雲端硬碟連線');
 }
 
-function queue(path, data){ lsSet(path, data); scheduleSync(); refreshSaveState(); }
+function queue(path, data){
+  try{ if(path!==LOG_PATH) appendLog(describeChange(path, lsGet(path), data)); }catch(e){}   // 修改紀錄
+  lsSet(path, data); scheduleSync(); refreshSaveState();
+}
 const monthPath = () => 'months/'+monthKey;
 const saveMonth = () => queue(monthPath(), month);
 const saveSchedule = () => queue('config/schedule', {classes: schedule, v: SCHEDULE_VERSION});
@@ -1019,6 +1034,7 @@ function importBackup(file){
     const months = Object.keys(p.data).filter(k=>k.startsWith('months/')).length;
     if(!window.confirm(`用 ${String(p.exportedAt||'').slice(0,10)} 的備份（${months} 個月的記錄）取代目前手機上的資料？`)) return;
     if(!applyData(p.data)) return;
+    appendLog([{m:`從備份檔還原（${String(p.exportedAt||'').slice(0,10)} 的備份）`}]); render();
     if(!drive.connected) lsSet('meta/backup', {at: p.exportedAt || new Date().toISOString()});
     scheduleSync(); refreshSaveState(); toast('已還原備份');
   };
@@ -1190,6 +1206,7 @@ function render(){
   else if(tab==='rec') renderRec(days);
   else if(tab==='self') renderSelf();
   else if(tab==='fin') renderFin();
+  else if(tab==='hist') renderHist();
   else renderSched();
   if(focusId){ const f=document.getElementById(focusId); if(f && f!==document.activeElement) f.focus(); }
 }
@@ -1259,6 +1276,7 @@ function calendarHTML(days){
 }
 function renderLog(days){
   const isThisMonth = monthKey===TODAY.slice(0,7);
+  const histDays = new Set(readLog().items.map(x=>x.r).filter(r=>r && r.startsWith(monthKey)));
   const blank = !schedule.length && !hasRecords(allData());
   let html = (blank ? `<div class="card emptystate"><b>還沒有資料</b><p>這個網頁本身不含任何課表或學員資料。請按右上角「連線 Google 雲端硬碟」載入雲端的資料，或從「備份選項」→「從備份檔還原」匯入備份 .json。</p></div>` : '')
     + calendarHTML(days) + `<div class="toolbar" style="margin-top:14px">
@@ -1276,6 +1294,7 @@ function renderLog(days){
         <span class="w${day.dow===0||day.dow===6?' we':''}">週${DOW[day.dow]}</span>
         ${isToday?'<span class="tag">今天</span>':''}
         <span class="mini" aria-hidden="true">${day.items.map(i=>`<span class="${i.status}"></span>`).join('')}</span>
+        ${histDays.has(day.ds)?`<button class="linkbtn histlink" data-histday-go="${day.ds}" title="這一天的課的修改紀錄">紀錄</button>`:''}
         <span class="tot">已開 <span class="num">NT$ ${money(dt)}</span></span>
       </div>`;
     day.items.forEach(it=>{
@@ -1980,6 +1999,177 @@ function renderFin(){
     </section>
     ${finList(f)}`;
 }
+/* ---------- 修改紀錄: every change saved through queue() is compared with what was stored and written as a line ---------- */
+// log/edits = {v:1, items:[{t: ISO time, d: 裝置, m: 說明, r: 課程日期 YYYY-MM-DD 或空白}]}，只留最近 6 個月（最多 3000 筆）
+const DEVICE = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : '電腦';
+const LOG_PATH = 'log/edits';
+function readLog(){ const d = lsGet(LOG_PATH); return d && Array.isArray(d.items) ? d : {v:1, items:[]}; }
+function appendLog(lines){
+  if(!lines.length) return;
+  const log = readLog(), t = new Date().toISOString();
+  lines.forEach(x=>log.items.push({t, d:DEVICE, m:x.m, r:x.r||''}));
+  const cut = new Date(); cut.setMonth(cut.getMonth()-6);
+  log.items = log.items.filter(x=>x.t >= cut.toISOString()).slice(-3000);
+  lsSet(LOG_PATH, log);
+}
+const nt = v => v==null || v==='' ? '未填' : 'NT$'+money(v);
+function clsLabel(key, mo){
+  const [ds, cid] = key.split('_'); const e = (mo.entries||{})[key] || {};
+  const c = e.snap || schedule.find(x=>x.id===cid) || {};
+  return `${md(ds)} ${c.content||''}${c.place?' · '+c.place:''}`;
+}
+const recvLabel = k => { const p = k.split('｜'); return p[0]==='private' ? `${p[2]||''}（${p[1]||''}）` : (p[1]||k); };
+const subText = s => `${s.name}${s.amt!=null?` · 轉 NT$${money(s.amt)}`:''}`;
+const stuName = id => (stuOf(id).st||{}).name || '（已刪除的學員）';
+function diffMonth(a, b){
+  a = normMonth(a ? JSON.parse(JSON.stringify(a)) : emptyMonth()); b = normMonth(JSON.parse(JSON.stringify(b||emptyMonth())));
+  const out = [], add = (r, m) => out.push({r, m});
+  new Set([...Object.keys(a.entries), ...Object.keys(b.entries)]).forEach(k=>{
+    const x = a.entries[k]||{}, y = b.entries[k]||{}, ds = k.slice(0,10), L = clsLabel(k, y.snap?b:a);
+    if((x.s==='off') !== (y.s==='off')) add(ds, `${L}：${x.s==='off'?'停課 → 有開':'有開 → 停課'}`);
+    if(x.pay !== y.pay) add(ds, `${L}：金額 ${x.pay==null?'課表金額':nt(x.pay)} → ${y.pay==null?'課表金額':nt(y.pay)}`);
+    if(x.mins !== y.mins) add(ds, `${L}：上課 ${x.mins??'課表'} → ${y.mins??'課表'} 分鐘`);
+    const sa = x.sub, sb = y.sub;
+    if(!sa && sb) add(ds, `${L}：請人代課（${subText(sb)}）`);
+    else if(sa && !sb) add(ds, `${L}：取消代課（原本 ${sa.name}）`);
+    else if(sa && sb){
+      if(sa.name!==sb.name || sa.amt!==sb.amt) add(ds, `${L}：代課改成 ${subText(sb)}`);
+      if(!!sa.paid !== !!sb.paid) add(ds, `${L}：代課費${sb.paid?'已轉給 '+sb.name:'改回待轉'}`);
+    }
+  });
+  const ex = arr => Object.fromEntries(arr.map(x=>[x.id, x]));
+  const ea = ex(a.extras), eb = ex(b.extras);
+  new Set([...Object.keys(ea), ...Object.keys(eb)]).forEach(id=>{
+    const x = ea[id], y = eb[id], z = y || x, L = `${md(z.date)} ${z.time} ${z.content} · ${z.place}`;
+    if(!x){ add(z.date, `加課 ${L} · NT$${money(y.pay)}`); return; }
+    if(!y){ add(z.date, `刪除加課 ${L}`); return; }
+    if((x.s==='off') !== (y.s==='off')) add(z.date, `${L}（加課）：${x.s==='off'?'停課 → 有開':'有開 → 停課'}`);
+    if(x.pay !== y.pay) add(z.date, `${L}（加課）：金額 ${nt(x.pay)} → ${nt(y.pay)}`);
+    if(x.mins !== y.mins) add(z.date, `${L}（加課）：上課 ${x.mins??x.dur} → ${y.mins??y.dur} 分鐘`);
+    if(JSON.stringify(x.sub||null) !== JSON.stringify(y.sub||null)){
+      if(!x.sub) add(z.date, `${L}（加課）：請人代課（${subText(y.sub)}）`);
+      else if(!y.sub) add(z.date, `${L}（加課）：取消代課`);
+      else if(!!x.sub.paid !== !!y.sub.paid) add(z.date, `${L}（加課）：代課費${y.sub.paid?'已轉':'改回待轉'}`);
+      else add(z.date, `${L}（加課）：代課改成 ${subText(y.sub)}`);
+    }
+  });
+  new Set([...Object.keys(a.received), ...Object.keys(b.received)]).forEach(k=>{
+    if(a.received[k] !== b.received[k] && !(a.received[k]==null && b.received[k]==null)) add('', `對帳實收 ${recvLabel(k)}：${nt(a.received[k])} → ${nt(b.received[k])}`);
+  });
+  new Set([...Object.keys(a.paid), ...Object.keys(b.paid)]).forEach(k=>{
+    if(!!a.paid[k] !== !!b.paid[k]){ const x = b.extras.find(x=>x.id===k) || a.extras.find(x=>x.id===k);
+      add(x ? x.date : k.slice(0,10), `${x ? `${md(x.date)} ${x.content}` : clsLabel(k, b)}：堂結${b.paid[k]?'已收':'改回未收'}`); }
+  });
+  new Set([...Object.keys(a.att), ...Object.keys(b.att)]).forEach(k=>{
+    const x = a.att[k]||{}, y = b.att[k]||{}, ds = k.slice(0,10), L = `${md(ds)} ${srShort(k.slice(11))}`;
+    const dl = (f, on, off) => { const p = x[f]||[], q = y[f]||[];
+      q.filter(i=>!p.includes(i)).forEach(i=>add(ds, `${L}：${stuName(i)} ${on}`)); p.filter(i=>!q.includes(i)).forEach(i=>add(ds, `${L}：${stuName(i)} ${off}`)); };
+    dl('leave', '請假', '取消請假');
+    dl('makeup', '來補課', '取消補課');
+    const gs = g => `${g.name}${g.for?` 代 ${stuName(g.for)}${g.forKey?' '+md(g.forKey.slice(0,10)):''}`:''}`;
+    const ga = (x.guest||[]).map(gs), gb = (y.guest||[]).map(gs);
+    gb.filter(v=>!ga.includes(v)).forEach(v=>add(ds, `${L}：代補 ${v}`)); ga.filter(v=>!gb.includes(v)).forEach(v=>add(ds, `${L}：刪除代補 ${v}`));
+    const ss = s => `${s.name||'（沒寫名字）'} NT$${money(s.amount)}`;
+    const sa = (x.single||[]).map(ss), sb = (y.single||[]).map(ss);
+    sb.filter(v=>!sa.includes(v)).forEach(v=>add(ds, `${L}：單堂報名 ${v}`)); sa.filter(v=>!sb.includes(v)).forEach(v=>add(ds, `${L}：刪除單堂 ${v}`));
+  });
+  return out;
+}
+function diffPrepaid(a, b){
+  const out = [], A = (a&&a.students)||{}, B = (b&&b.students)||{};
+  const en = e => e.type==='buy' ? `${md(e.date)} 購買 ${fmtQ(e.count)}（NT$${money(e.amount||0)}）` : `${md(e.date)} 登記剩 ${fmtQ(e.count)}`;
+  new Set([...Object.keys(A), ...Object.keys(B)]).forEach(n=>{
+    const x = A[n]||{}, y = B[n]||{};
+    const mo = s => s.mode || (s.on ? 'prepaid' : 'monthly');
+    if(mo(x) !== mo(y)) out.push({m:`${n}：付款方式 ${MODES[mo(x)]} → ${MODES[mo(y)]}`});
+    if((x.unit||'class') !== (y.unit||'class')) out.push({m:`${n}：扣法改成${y.unit==='time'?'按時間':'按堂數'}`});
+    if(x.rate !== y.rate) out.push({m:`${n}：每小時收費 ${nt(x.rate)} → ${nt(y.rate)}`});
+    const ea = Object.fromEntries((x.entries||[]).map(e=>[e.id,e])), eb = Object.fromEntries((y.entries||[]).map(e=>[e.id,e]));
+    new Set([...Object.keys(ea), ...Object.keys(eb)]).forEach(id=>{
+      if(!ea[id]) out.push({r:eb[id].date, m:`${n}：登記 ${en(eb[id])}`});
+      else if(!eb[id]) out.push({r:ea[id].date, m:`${n}：刪除登記 ${en(ea[id])}`});
+      else if(JSON.stringify(ea[id]) !== JSON.stringify(eb[id])) out.push({r:eb[id].date, m:`${n}：修正登記 ${en(ea[id])} → ${en(eb[id])}`});
+    });
+  });
+  return out;
+}
+function diffSelfrun(a, b){
+  const out = [], TA = Object.fromEntries(((a&&a.terms)||[]).map(t=>[t.id,t])), TB = Object.fromEntries(((b&&b.terms)||[]).map(t=>[t.id,t]));
+  new Set([...Object.keys(TA), ...Object.keys(TB)]).forEach(id=>{
+    const x = TA[id], y = TB[id];
+    if(!x){ out.push({m:`自營團課：開新一期「${y.name}」（${y.dates.length} 堂、${y.students.length} 位學員）`}); return; }
+    if(!y){ out.push({m:`自營團課：刪除「${x.name}」`}); return; }
+    const P = y.name;
+    y.dates.filter(d=>!x.dates.includes(d)).forEach(d=>out.push({r:d, m:`${P}：加上課日期 ${md(d)}`}));
+    x.dates.filter(d=>!y.dates.includes(d)).forEach(d=>out.push({r:d, m:`${P}：刪除上課日期 ${md(d)}`}));
+    const lab = {one:'一種課程', both:'兩種課程'};
+    ['one','both'].forEach(k=>{ if((x.price||{})[k] !== (y.price||{})[k]) out.push({m:`${P}：${lab[k]}價格 ${nt((x.price||{})[k])} → ${nt((y.price||{})[k])}`}); });
+    if(x.single !== y.single) out.push({m:`${P}：單堂價 ${nt(x.single)} → ${nt(y.single)}`});
+    if(x.venue !== y.venue) out.push({m:`${P}：場地費 ${nt(x.venue)} → ${nt(y.venue)}`});
+    if((x.cap||16) !== (y.cap||16)) out.push({m:`${P}：每堂人數上限 ${x.cap||16} → ${y.cap||16}`});
+    const SA = Object.fromEntries(x.students.map(s=>[s.id,s])), SB = Object.fromEntries(y.students.map(s=>[s.id,s]));
+    new Set([...Object.keys(SA), ...Object.keys(SB)]).forEach(sid=>{
+      const s = SA[sid], u = SB[sid];
+      if(!s){ out.push({m:`${P}：新增學員 ${u.name}（${pkgName(u.pkg, y)} · NT$${money(u.fee)}）`}); return; }
+      if(!u){ out.push({m:`${P}：刪除學員 ${s.name}`}); return; }
+      if(s.pkg !== u.pkg) out.push({m:`${P}：${u.name} 方案改成 ${pkgName(u.pkg, y)}`});
+      if(s.fee !== u.fee) out.push({m:`${P}：${u.name} 學費 ${nt(s.fee)} → ${nt(u.fee)}`});
+      if((s.paid||'') !== (u.paid||'')) out.push({m:`${P}：${u.name} 繳費日 ${s.paid?md(s.paid):'未繳費'} → ${u.paid?md(u.paid):'未繳費'}`});
+    });
+  });
+  return out;
+}
+function diffSchedule(a, b){
+  const out = [], A = Object.fromEntries(((a&&a.classes)||[]).map(c=>[c.id,c])), B = Object.fromEntries(((b&&b.classes)||[]).map(c=>[c.id,c]));
+  const L = c => `週${DOW[c.dow]} ${c.time} ${c.content||'（新課）'}${c.place?' · '+c.place:''}`;
+  const F = {dow:'星期', time:'時間', dur:'分鐘', place:'地點', content:'上課內容', pay:'薪水'};
+  new Set([...Object.keys(A), ...Object.keys(B)]).forEach(id=>{
+    const x = A[id], y = B[id];
+    if(!x){ out.push({m:`課表：新增 ${L(y)}`}); return; }
+    if(!y){ out.push({m:`課表：刪除 ${L(x)}`}); return; }
+    if(!x.until && y.until){ out.push({m:`課表：刪除 ${L(x)}（今天起不再上）`}); return; }
+    Object.keys(F).forEach(f=>{ if(String(x[f]??'') !== String(y[f]??'')) out.push({m:`課表：${L(x)} 的${F[f]} ${f==='dow'?'週'+DOW[x[f]]:x[f]} → ${f==='dow'?'週'+DOW[y[f]]:y[f]}`}); });
+  });
+  return out;
+}
+function diffBilling(a, b){
+  const out = [], A = (a&&a.places)||{}, B = (b&&b.places)||{};
+  new Set([...Object.keys(A), ...Object.keys(B)]).forEach(p=>{
+    const x = (A[p]||{}).cut||0, y = (B[p]||{}).cut||0;
+    if(x !== y) out.push({m:`對帳：${p} 結算改成${y?`每月 ${y} 號結`:'整月'}`});
+  });
+  return out;
+}
+function describeChange(path, before, after){
+  if(path.startsWith('months/')) return diffMonth(before, after);
+  if(path==='config/prepaid') return diffPrepaid(before, after);
+  if(path==='config/selfrun') return diffSelfrun(before, after);
+  if(path==='config/schedule') return diffSchedule(before, after);
+  if(path==='config/billing') return diffBilling(before, after);
+  return [];
+}
+// 修改紀錄 view
+let histDay = null, histQ = '';
+function renderHist(){
+  const log = readLog().items.slice().reverse();
+  const rows = log.filter(x=>(!histDay || x.r===histDay) && (!histQ || (x.m+' '+x.d).toLowerCase().includes(histQ.toLowerCase())));
+  const groups = {};
+  rows.forEach(x=>{ const d = ymd(new Date(x.t)); (groups[d] = groups[d] || []).push(x); });
+  const hm = t => { const d = new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
+  $('#view').innerHTML = `
+    <div class="toolbar histbar">
+      <button class="btn small" data-histback="1">← 回逐日記錄</button>
+      <label>課程日期<input class="field" type="date" data-histday value="${histDay||''}"></label>
+      ${histDay?`<button class="btn small" data-histclear="1">看全部</button>`:''}
+      <input class="field" type="search" id="hist-q" placeholder="搜尋（課名、學生、地點…）" value="${esc(histQ)}">
+    </div>
+    <section class="recsec card finsec">
+      <div class="rechead"><h2>修改紀錄</h2><span class="hint">${histDay?`${md(histDay)} 的課 · `:''}${rows.length} 筆 · 只保留最近 6 個月 · 時間是修改的時間</span></div>
+      ${rows.length ? Object.entries(groups).map(([d,xs])=>`<div class="histday"><div class="histdate">${Number(d.slice(5,7))}/${Number(d.slice(8,10))}（週${DOW[new Date(d+'T00:00:00').getDay()]}）</div>
+        <ul class="histlist">${xs.map(x=>`<li><span class="ht">${hm(x.t)}</span><span class="hd">${esc(x.d)}</span><span class="hm">${esc(x.m)}</span></li>`).join('')}</ul></div>`).join('')
+        : '<p class="finnote">還沒有紀錄。從這一版開始，每次修改都會記在這裡。</p>'}
+    </section>`;
+}
 function placeOf(name){
   const c = schedule.find(c=>isPrivate(c.content) && privName(c.content)===name);
   if(c) return c.place;
@@ -2325,6 +2515,9 @@ document.addEventListener('click', e=>{
     if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
     render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，逐日記錄也標成停課':'恢復有開'}`); return;
   }
+  if(t.dataset.histback){ tab = 'log'; render(); return; }
+  if(t.dataset.histclear){ histDay = null; render(); return; }
+  if(t.dataset.histdayGo){ histDay = t.dataset.histdayGo; histQ = ''; tab = 'hist'; render(); window.scrollTo(0,0); return; }
   if(t.dataset.subopen){ subOpen = subOpen===t.dataset.subopen ? null : t.dataset.subopen; render(); const f = document.querySelector('.subform input[name=n]'); f && !f.value && f.focus(); return; }
   if(t.dataset.subcancel){ subOpen = null; render(); return; }
   if(t.dataset.subdel){ subOpen = null; setSub(t.dataset.subdel, null); toast('已取消代課'); return; }
@@ -2433,6 +2626,7 @@ document.addEventListener('change', e=>{
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
   if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
+  if(el.dataset.histday!==undefined){ histDay = el.value || null; render(); return; }
   if(el.dataset.subpaid!==undefined){
     const it = findItem(el.dataset.subpaid); if(!it || !it.sub) return;
     setSub(el.dataset.subpaid, {...it.sub, paid: el.checked}); toast(el.checked ? `已標記轉給 ${it.sub.name}` : '改回待轉'); return;
@@ -2520,6 +2714,7 @@ document.addEventListener('input', e=>{
   if(e.target.id==='pp-count'){ const a=$('#pp-amount'); if(a && !a.dataset.touched) a.value = Math.round((Number(e.target.value)||0) * Number(e.target.dataset.unit||0)); }
   if(e.target.id==='pp-amount') e.target.dataset.touched = '1';
   if(e.target.id==='ax-student' || e.target.id==='ax-place') axUpdate();
+  if(e.target.id==='hist-q'){ histQ = e.target.value; const pos = e.target.selectionStart; render(); const q = $('#hist-q'); if(q){ q.focus(); q.setSelectionRange(pos,pos); } }
 });
 document.addEventListener('submit', e=>{
   e.preventDefault();
@@ -2637,6 +2832,7 @@ month = normMonth(lsGet(monthPath()) || emptyMonth());
 render(); refreshSaveState();
 const closeMenu = () => { $('#moreMenu').open = false; };
 $('#exportBtn').onclick = () => { closeMenu(); exportBackup(); };
+$('#histBtn').onclick = () => { closeMenu(); histDay = null; tab = 'hist'; render(); window.scrollTo(0,0); };
 $('#importBtn').onclick = () => { closeMenu(); $('#importFile').click(); };
 $('#importFile').onchange = e=>{ const f=e.target.files[0]; if(f) importBackup(f); e.target.value=''; };
 $('#driveBtn').onclick = () => {
