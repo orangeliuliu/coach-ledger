@@ -584,7 +584,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261030_7</footer>
+  <footer class="appver">ver 20261101_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -2011,11 +2011,34 @@ function renderFin(){
 // log/edits = {v:1, items:[{t: ISO time, d: 裝置, m: 說明, r: 課程日期 YYYY-MM-DD 或空白}]}，只留最近 6 個月（最多 3000 筆）
 const DEVICE = /iPhone|iPad/.test(navigator.userAgent) ? 'iPhone' : /Android/.test(navigator.userAgent) ? 'Android' : '電腦';
 const LOG_PATH = 'log/edits';
-function readLog(){ const d = lsGet(LOG_PATH); return d && Array.isArray(d.items) ? d : {v:1, items:[]}; }
+function readLog(){ const d = lsGet(LOG_PATH); return d && Array.isArray(d.items) ? {...d, items:compactLog(d.items)} : {v:1, items:[]}; }
+// 連續修改合併：同一裝置、同一堂課、同一欄位，2 分鐘內接著改（上一筆的「改後」= 這一筆的「改前」）→ 併成一筆「最早的值 → 最新的值」；改回原值就整筆拿掉
+const LOG_MERGE_MS = 2*60*1000;
+const logParts = m => { const x = /^(.*?)([^\s：]+) → (\S+)(.*)$/.exec(m); return x && !x[3].includes('→') && !x[4].includes('→') ? {head:x[1], from:x[2], to:x[3], tail:x[4]} : null; };
+function compactLog(items){
+  const out = [];
+  items.forEach(it=>{
+    const p = logParts(it.m), now = Date.parse(it.t);
+    if(p){
+      for(let i=out.length-1; i>=0; i--){
+        const o = out[i]; if(now - Date.parse(o.t) > LOG_MERGE_MS) break;
+        const q = logParts(o.m);
+        if(o.d===it.d && o.r===it.r && q && q.head===p.head && q.tail===p.tail && q.to===p.from){
+          out.splice(i,1);
+          if(q.from !== p.to) out.push({...it, m:`${p.head}${q.from} → ${p.to}${p.tail}`});
+          return;
+        }
+      }
+    }
+    out.push(it);
+  });
+  return out;
+}
 function appendLog(lines){
   if(!lines.length) return;
   const log = readLog(), t = new Date().toISOString();
   lines.forEach(x=>log.items.push({t, d:DEVICE, m:x.m, r:x.r||''}));
+  log.items = compactLog(log.items);
   const cut = new Date(); cut.setMonth(cut.getMonth()-6);
   log.items = log.items.filter(x=>x.t >= cut.toISOString()).slice(-3000);
   lsSet(LOG_PATH, log);
