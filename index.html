@@ -595,7 +595,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_1</footer>
+  <footer class="appver">ver 20261114_2</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1157,7 +1157,7 @@ function setWhy(key, val){
   month.entries[key] = e;
   saveMonth();
 }
-const WHY_DEFAULT = ['生病','受傷','私人事務','出國','受訓/考證','場館休館','國定假日','颱風','人數不足','場館找人代課'];
+const WHY_DEFAULT = ['學生生病受傷請假','學生私事請假','受訓/考證','場館休館','國定假日','颱風'];
 function whyOptions(){
   const cnt = new Map();
   try{ Object.keys(localStorage).filter(k=>k.startsWith(LS+'months/')).forEach(k=>{ const mo = JSON.parse(localStorage.getItem(k))||{};
@@ -1355,13 +1355,13 @@ function renderLog(days){
           ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
         </div>
       </div>`;
-      if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" value="${esc(it.why)}" placeholder="選填，例如：生病、場館休館（之後檢討用）"></label></div>`;
+      if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(it.why)}" placeholder="選填，例如：場館休館"></label></div>`;
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
       if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
         <span class="subrule">⚠ 場館自己找人、自己付錢 → 不要記代課，按「<b>停課</b>」<br>✓ 場館付給教練、教練再轉給代課老師 → 在這裡記代課</span>
         <label>代課老師<input class="field" name="n" required list="dl-subn" value="${esc(it.sub?it.sub.name:'')}"></label>
         <label>轉給他 NT$<input class="field num" name="a" type="number" min="0" step="50" inputmode="numeric" value="${subAmt(it) || it.pay}" required></label>
-        <label class="wlab">請假原因（選填）<input class="field" name="w" list="dl-why" maxlength="60" value="${esc(it.why)}" placeholder="例如：生病、出國"></label>
+        <label class="wlab">請假原因（選填）<input class="field" name="w" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(it.why)}" placeholder="例如：受訓/考證"></label>
         <div class="btns"><button class="btn primary" type="submit">儲存</button>${it.sub?`<button class="btn" type="button" data-subdel="${esc(it.key)}">取消代課</button>`:''}<button class="btn" type="button" data-subcancel="1">關閉</button></div>
         <datalist id="dl-subn">${subNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
       </form>`;
@@ -2711,6 +2711,10 @@ document.addEventListener('click', e=>{
   }
 });
 
+document.addEventListener('keydown', e=>{   // 原因欄：按 Enter（手機的「完成」）就確定
+  const el = e.target;
+  if(e.key==='Enter' && !e.isComposing && el.classList && el.classList.contains('whyin')){ e.preventDefault(); el.blur(); }
+});
 document.addEventListener('change', e=>{
   const el = e.target;
   if(el.dataset.modeFor!==undefined){
