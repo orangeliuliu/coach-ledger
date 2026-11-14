@@ -557,6 +557,12 @@ td.src>span{display:block}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;z-index:20}
 @media (prefers-reduced-motion:no-preference){.row,.seg{transition:background .15s,border-color .15s,color .15s}}
 @media (max-width:600px){.tab{padding:8px 9px}.tabs{gap:2px}}   /* 六個分頁在手機上一次放得下 */
+/* 往下滑時保留第一列（位移由 pinHeads() 設定） */
+thead th{position:relative;z-index:2;transform:translateY(var(--pin,0px))}
+table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)}
+.dayhead{position:relative;z-index:3;transform:translateY(var(--pin,0px));background:var(--surface)}
+.day.pinned .dayhead{box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.histdate{position:relative;z-index:2;transform:translateY(var(--pin,0px));background:var(--surface)}
 </style>
 </head>
 <body>
@@ -608,7 +614,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_6</footer>
+  <footer class="appver">ver 20261114_7</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1239,6 +1245,26 @@ function setMins(key, val){
 }
 
 /* ---------- render ---------- */
+/* ---------- 往下滑時保留第一列：表格的標題列、每日的日期列、修改紀錄的日期，滑到分頁列下面就停住 ---------- */
+// 表格多半包在可以左右滑的框裡，CSS sticky 在那裡面不會作用，所以用位移把第一列留在分頁列下方
+function pinHeads(){
+  const bar = document.querySelector('.tabbar'), top = bar ? Math.max(0, bar.getBoundingClientRect().bottom) : 0;
+  const pin = (box, head, tuck = 0) => {   // tuck：往上多塞幾 px 到分頁列後面，避免縫隙露出下面的字
+    if(!box || !head) return;
+    const r = box.getBoundingClientRect(), h = head.offsetHeight;
+    const dy = Math.round(Math.max(0, Math.min(top - tuck - r.top, r.height - h*2)));
+    if((box._pin||0) === dy) return;
+    box._pin = dy; box.style.setProperty('--pin', dy+'px'); box.classList.toggle('pinned', dy>0);
+  };
+  document.querySelectorAll('#view table').forEach(t=>pin(t, t.tHead, 6));
+  document.querySelectorAll('#view .day').forEach(d=>pin(d, d.querySelector('.dayhead')));
+  document.querySelectorAll('#view .histday').forEach(d=>pin(d, d.querySelector('.histdate')));
+}
+let pinQueued = false;
+const pinSoon = () => { if(pinQueued) return; pinQueued = true; requestAnimationFrame(()=>{ pinQueued = false; pinHeads(); }); };
+window.addEventListener('scroll', pinSoon, {passive:true});
+window.addEventListener('resize', pinSoon);
+document.addEventListener('toggle', pinSoon, true);   // 展開／收起明細
 function render(){
   const [y,m] = monthKey.split('-').map(Number);
   $('#monthTitle').innerHTML = `${y}<small>年</small>${m}<small>月</small>`;
@@ -1265,6 +1291,7 @@ function render(){
   else if(tab==='off') renderOff();
   else renderSched();
   if(focusId){ const f=document.getElementById(focusId); if(f && f!==document.activeElement) f.focus(); }
+  pinHeads();
 }
 
 // Distinct classes (weekly schedule + extra classes this month) offered as templates for a new class
