@@ -614,7 +614,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_7</footer>
+  <footer class="appver">ver 20261114_8</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -2023,7 +2023,7 @@ function finList(f){
   const sum = k => rows.reduce((a,x)=>a+x[k],0);
   const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
   return `<section class="recsec card finsec" id="fin-list">
-      <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
+      <div class="rechead"><h2>${mLabel(f.mk)}博派・私教明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
       <div class="fincats">${tab('all','全部')}${tab('sr','博派')}${tab('pv','私教課')}</div>
       ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
         <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
@@ -2067,6 +2067,7 @@ function renderFin(){
       <label>算到哪一天<input class="field" type="date" data-finupto value="${upto}" min="${mStart}" max="${mEnd}"></label>
       <div class="btns">${isNow?`<button class="btn small${upto===TODAY?' primary':''}" data-finupto-set="${TODAY}">今天</button>`:''}<button class="btn small${upto===mEnd?' primary':''}" data-finupto-set="${mEnd}">月底</button></div>
       <span class="hint">${est?'選到還沒到的日子：照課表全開、已登記的停課和預繳估算。':'只算到這一天為止的課、繳費和購買。'}</span>
+      <span class="hint finscope">這頁只算<b>博派和私教課</b>（會先收錢再上課的）。團體課是上完才領錢，收入看「對帳」和最上方的本月上課總額。</span>
     </div>
     <section class="card finhead">
       <span class="lab">到 ${uptoText}要留著的錢${est?'（預估）':''}</span>
