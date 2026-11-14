@@ -136,6 +136,17 @@ form.inline .field.num{width:80px}
 .subform label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--muted)}
 .subform .field{width:auto}.subform input[name=n]{width:140px}.subform input[name=a]{width:110px}
 .subform .btns{display:flex;gap:6px}
+.subform .wlab{flex:1 1 180px}.subform .wlab .field{width:100%}
+.whyrow{padding:0 14px 10px 88px}
+.row.off + .whyrow{background:linear-gradient(90deg,var(--off-soft),transparent 60%)}
+.row.subbed + .whyrow{background:var(--wait-soft)}
+.whyrow label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);white-space:nowrap}
+.whyrow .whyin{flex:1;min-width:0;max-width:420px;padding:6px 10px;font-size:14px}
+.whyrow.empty .whyin{border-style:dashed}
+@media (max-width:600px){.whyrow{padding-left:14px}}
+.whytable td small{display:block;color:var(--muted);font-size:12px}
+.whyh{font-size:14px;font-weight:600;margin:16px 0 8px}
+.whytable .muted{color:var(--muted)}
 @media (max-width:600px){.subform{padding-left:14px}}
 .sublist td small{display:block;font-size:11px;color:var(--muted)}
 .sublist td{font-family:var(--body)}
@@ -584,7 +595,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261101_1</footer>
+  <footer class="appver">ver 20261114_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1096,7 +1107,7 @@ function daysOfMonth(mk = monthKey, mo = month){
       else { it.base = base; it.pay = it.override ?? base; }
     });
     // 請人代課: {name, amt (only when not the full pay), paid}
-    items.forEach(it=>{ const src = it.extra ? mo.extras.find(x=>x.id===it.key) : mo.entries[it.key]; it.sub = (src && src.sub) || null; });
+    items.forEach(it=>{ const src = it.extra ? mo.extras.find(x=>x.id===it.key) : mo.entries[it.key]; it.sub = (src && src.sub) || null; it.why = (src && src.why) || ''; });
     items.sort((a,b)=>a.time.localeCompare(b.time));
     out.push({ds, d, dow, items});
   }
@@ -1123,15 +1134,36 @@ function freezePast(classId){
   }
 }
 const subAmt = it => it.sub ? (it.sub.amt ?? it.pay) : 0;
-function setSub(key, val){
+function setSub(key, val, why){   // why: 原因（undefined = 不動）；取消代課時原因一起拿掉
   const x = month.extras.find(x=>x.id===key);
-  if(x){ if(val) x.sub = val; else delete x.sub; saveMonth(); render(); return; }
+  const apply = o => { if(val){ o.sub = val; if(why!==undefined){ if(why) o.why = why; else delete o.why; } } else { delete o.sub; if(o.s!=='off') delete o.why; } };
+  if(x){ apply(x); saveMonth(); render(); return; }
   const it = findItem(key); if(!it) return;
   const e = {...(month.entries[key]||{})};
   e.snap = e.snap || snapOf(it);
-  if(val) e.sub = val; else delete e.sub;
+  apply(e);
   month.entries[key] = e;
   saveMonth(); render();
+}
+// 停課 / 代課的原因（選填），之後檢討用
+function setWhy(key, val){
+  const v = String(val||'').trim().slice(0,60);
+  const x = month.extras.find(x=>x.id===key);
+  if(x){ if(v) x.why = v; else delete x.why; saveMonth(); return; }
+  const it = findItem(key); if(!it) return;
+  const e = {...(month.entries[key]||{})};
+  e.snap = e.snap || snapOf(it);
+  if(v) e.why = v; else delete e.why;
+  month.entries[key] = e;
+  saveMonth();
+}
+const WHY_DEFAULT = ['生病','受傷','私人事務','出國','受訓/考證','場館休館','國定假日','颱風','人數不足','場館找人代課'];
+function whyOptions(){
+  const cnt = new Map();
+  try{ Object.keys(localStorage).filter(k=>k.startsWith(LS+'months/')).forEach(k=>{ const mo = JSON.parse(localStorage.getItem(k))||{};
+    [...Object.values(mo.entries||{}), ...(mo.extras||[])].forEach(e=>{ if(e.why) cnt.set(e.why, (cnt.get(e.why)||0)+1); }); }); }catch(e){}
+  const used = [...cnt.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  return [...new Set([...used, ...WHY_DEFAULT])];
 }
 function subNames(){
   const set = new Set();
@@ -1157,11 +1189,11 @@ function findItem(key){
 }
 function setStatus(key, s){   // s: 'held' | 'off'  — 停課 also drops any 代課 on that class (nothing to pass on)
   const x = month.extras.find(x=>x.id===key);
-  if(x){ x.s = s; if(s==='off') delete x.sub; saveMonth(); render(); return; }
+  if(x){ x.s = s; if(s==='off') delete x.sub; else if(!x.sub) delete x.why; saveMonth(); render(); return; }
   const it = findItem(key); if(!it) return;
   const e = {...(month.entries[key]||{})};
   e.snap = e.snap || snapOf(it);
-  if(s==='off'){ e.s = 'off'; delete e.sub; } else delete e.s;
+  if(s==='off'){ e.s = 'off'; delete e.sub; } else { delete e.s; if(!e.sub) delete e.why; }   // 恢復有開 → 原因不用留
   month.entries[key] = e;
   saveMonth(); render();
 }
@@ -1292,6 +1324,7 @@ function renderLog(days){
     <span style="display:flex;gap:8px;flex-wrap:wrap">
       ${isThisMonth?'<button class="btn" id="jumpToday">跳到今天</button>':''}
     </span></div>`;
+  html += `<datalist id="dl-why">${whyOptions().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>`;
   html += '<div class="days" style="margin-top:12px">';
   days.forEach(day=>{
     const dt = day.items.filter(i=>i.status==='held').reduce((s,i)=>s+i.pay,0);
@@ -1322,11 +1355,13 @@ function renderLog(days){
           ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
         </div>
       </div>`;
+      if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" value="${esc(it.why)}" placeholder="選填，例如：生病、場館休館（之後檢討用）"></label></div>`;
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
       if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
         <span class="subrule">⚠ 場館自己找人、自己付錢 → 不要記代課，按「<b>停課</b>」<br>✓ 場館付給教練、教練再轉給代課老師 → 在這裡記代課</span>
         <label>代課老師<input class="field" name="n" required list="dl-subn" value="${esc(it.sub?it.sub.name:'')}"></label>
         <label>轉給他 NT$<input class="field num" name="a" type="number" min="0" step="50" inputmode="numeric" value="${subAmt(it) || it.pay}" required></label>
+        <label class="wlab">請假原因（選填）<input class="field" name="w" list="dl-why" maxlength="60" value="${esc(it.why)}" placeholder="例如：生病、出國"></label>
         <div class="btns"><button class="btn primary" type="submit">儲存</button>${it.sub?`<button class="btn" type="button" data-subdel="${esc(it.key)}">取消代課</button>`:''}<button class="btn" type="button" data-subcancel="1">關閉</button></div>
         <datalist id="dl-subn">${subNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
       </form>`;
@@ -2067,6 +2102,7 @@ function diffMonth(a, b){
       if(sa.name!==sb.name || sa.amt!==sb.amt) add(ds, `${L}：代課改成 ${subText(sb)}`);
       if(!!sa.paid !== !!sb.paid) add(ds, `${L}：代課費${sb.paid?'已轉給 '+sb.name:'改回待轉'}`);
     }
+    if((x.why||'') !== (y.why||'') && (y.why || y.s==='off' || y.sub)) add(ds, `${L}：原因 ${x.why||'未填'} → ${y.why||'未填'}`);
   });
   const ex = arr => Object.fromEntries(arr.map(x=>[x.id, x]));
   const ea = ex(a.extras), eb = ex(b.extras);
@@ -2083,6 +2119,7 @@ function diffMonth(a, b){
       else if(!!x.sub.paid !== !!y.sub.paid) add(z.date, `${L}（加課）：代課費${y.sub.paid?'已轉':'改回待轉'}`);
       else add(z.date, `${L}（加課）：代課改成 ${subText(y.sub)}`);
     }
+    if((x.why||'') !== (y.why||'') && (y.why || y.s==='off' || y.sub)) add(z.date, `${L}（加課）：原因 ${x.why||'未填'} → ${y.why||'未填'}`);
   });
   new Set([...Object.keys(a.received), ...Object.keys(b.received)]).forEach(k=>{
     if(a.received[k] !== b.received[k] && !(a.received[k]==null && b.received[k]==null)) add('', `對帳實收 ${recvLabel(k)}：${nt(a.received[k])} → ${nt(b.received[k])}`);
@@ -2280,6 +2317,28 @@ function yearCsv(year){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast(`已下載 ${year} 年度總表`);
 }
+// 停課・代課原因：本月清單＋今年依原因統計，檢討用
+function whySection(days){
+  const pick = (d, it) => it.status==='off' ? {kind:'停課', amt:it.pay} : (it.status==='held' && it.sub) ? {kind:'代課', amt:subAmt(it)} : null;
+  const list = []; days.forEach(d=>d.items.forEach(it=>{ const k = pick(d, it); if(k) list.push({...it, ...k, date:d.ds}); }));
+  const year = monthKey.slice(0,4), nowMk = TODAY.slice(0,7), stat = new Map();
+  for(let m=1; m<=12; m++){ const mk = year+'-'+pad(m); if(mk < START_MONTH || mk > nowMk) continue;
+    daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>TODAY) return; d.items.forEach(it=>{ const k = pick(d, it); if(!k) return;
+      const r = it.why || '（未填）'; if(!stat.has(r)) stat.set(r, {off:0, sub:0, offAmt:0, subAmt:0});
+      const s = stat.get(r); if(k.kind==='停課'){ s.off++; s.offAmt += k.amt; } else { s.sub++; s.subAmt += k.amt; } }); }); }
+  const rows = [...stat.entries()].sort((a,b)=>(a[0]==='（未填）')-(b[0]==='（未填）') || (b[1].off+b[1].sub)-(a[1].off+a[1].sub));
+  const blank = list.filter(x=>!x.why).length;
+  return `<section class="recsec card" id="rec-why">
+    <div class="rechead"><h2>停課・代課原因</h2><span class="hint">在「逐日記錄」停課或代課的課底下填原因，這裡整理起來方便檢討</span>
+      <span class="chip ${blank?'wait':'ok'} recleft">${list.length?(blank?`${blank} 堂沒填原因`:'都填了'):'本月沒有'}</span></div>
+    ${list.length?`<div class="tablewrap"><table class="fintable whytable">
+      <thead><tr><th>日期</th><th>課程</th><th>狀態</th><th>原因</th></tr></thead>
+      <tbody>${list.map(x=>`<tr><td>${md(x.date)}<small>${esc(x.time)}</small></td><td>${esc(x.content)}<small>${esc(x.place)}</small></td><td>${x.kind}${x.kind==='代課'?`<small>${esc(x.sub.name)}</small>`:''}</td><td>${x.why?esc(x.why):'<span class="muted">未填</span>'}</td></tr>`).join('')}</tbody></table></div>`:''}
+    ${rows.length?`<h3 class="whyh">${year} 年依原因統計${nowMk.startsWith(year)?`（算到今天 ${md(TODAY)}）`:''}</h3><div class="tablewrap"><table class="fintable whytable">
+      <thead><tr><th>原因</th><th class="r">停課</th><th class="r">沒收到 NT$</th><th class="r">代課</th><th class="r">轉出 NT$</th></tr></thead>
+      <tbody>${rows.map(([r,s])=>`<tr><td>${esc(r)}</td><td class="r">${s.off?s.off+' 堂':''}</td><td class="r">${s.off?money(s.offAmt):''}</td><td class="r">${s.sub?s.sub+' 堂':''}</td><td class="r">${s.sub?money(s.subAmt):''}</td></tr>`).join('')}</tbody></table></div>`:''}
+  </section>`;
+}
 // 代課轉出: classes someone else taught for the coach; the venue still pays the coach, who passes it on
 function subSection(days){
   const list = []; days.forEach(d=>d.items.forEach(it=>{ if(it.status==='held' && it.sub) list.push({...it, date:d.ds}); }));
@@ -2459,6 +2518,7 @@ function renderRec(days){
     ${perclassSection()}
     ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}
     ${subSection(days)}
+    ${whySection(days)}
     ${yearSection()}`;
   // Section shortcuts, each showing that section's status chip
   $('#recnav').innerHTML = [...document.querySelectorAll('.recsec')].map(sec=>{
@@ -2604,7 +2664,10 @@ document.addEventListener('click', e=>{
   }
   if(t.dataset.paidbtn){ const k=t.dataset.paidbtn; if(month.paid[k]) delete month.paid[k]; else month.paid[k]=true; saveMonth(); render(); return; }
   if(t.dataset.s){ const it = findItem(t.dataset.key); const cur = it?it.status:'held';
-    setStatus(t.dataset.key, (t.dataset.s==='off' && cur==='off') ? 'held' : t.dataset.s); return; }
+    const ns = (t.dataset.s==='off' && cur==='off') ? 'held' : t.dataset.s;
+    setStatus(t.dataset.key, ns);
+    if(ns==='off' && cur!=='off'){ const w = document.querySelector(`.whyin[data-why="${CSS.escape(t.dataset.key)}"]`); if(w && !w.value){ w.focus({preventScroll:true}); toast('已停課，可以補充原因（選填）'); } }
+    return; }
   if(t.dataset.del){ month.extras = month.extras.filter(x=>x.id!==t.dataset.del); saveMonth(); render(); toast('已刪除加課'); return; }
   if(t.dataset.add){ addOpenFor=t.dataset.add; render(); const f=$('#ax-time'); f&&f.focus(); return; }
   if(t.id==='ax-cancel'){ addOpenFor=null; render(); return; }
@@ -2656,6 +2719,7 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
+  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
   if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
   if(el.dataset.histday!==undefined){ histDay = el.value || null; render(); return; }
   if(el.dataset.subpaid!==undefined){
@@ -2771,7 +2835,7 @@ document.addEventListener('submit', e=>{
     const name = f.elements.n.value.trim(); if(!name) return;
     const a = Math.max(0, Math.round(Number(f.elements.a.value)||0));
     const v = {name, paid: !!(it.sub && it.sub.paid)}; if(a !== it.pay) v.amt = a;
-    subOpen = null; setSub(k, v); toast(`已記錄 ${name} 代課，要轉 NT$${money(a)}`); return;
+    subOpen = null; setSub(k, v, f.elements.w.value.trim().slice(0,60)); toast(`已記錄 ${name} 代課，要轉 NT$${money(a)}`); return;
   }
   if(f.classList.contains('srmk')){
     const k = f.dataset.key, id = f.elements.s.value; if(!id) return;
