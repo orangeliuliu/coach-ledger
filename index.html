@@ -146,7 +146,17 @@ form.inline .field.num{width:80px}
 .whyrow.empty .whyin{border-style:dashed}
 @media (max-width:600px){.whyrow{padding-left:14px}}
 .whytable td small{display:block;color:var(--muted);font-size:12px}
-.whyh{font-size:14px;font-weight:600;margin:16px 0 8px}
+.offrange{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.offrange .hint{flex-basis:100%}
+.whycell{display:flex;gap:6px;align-items:center}
+.whycell .whyin{min-width:120px;padding:6px 8px;font-size:14px}
+.whycell.empty .whyin{border-style:dashed}
+.whylist td{vertical-align:top}
+.whymix{font-size:13px;color:var(--muted)}
+.whytable th small{display:block;font-weight:400;font-size:11px}
+.whytable td.r small{white-space:nowrap}
+.kindoff{color:var(--off);font-weight:600}.kindsub{color:var(--wait);font-weight:600}
+.whynote{display:block;width:100%;text-align:left;margin-top:12px;padding:10px 14px;border:1px solid var(--line);background:var(--wait-soft);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
 .whytable .muted{color:var(--muted)}
 @media (max-width:600px){.subform{padding-left:14px}}
 .sublist td small{display:block;font-size:11px;color:var(--muted)}
@@ -546,6 +556,7 @@ td.src>span{display:block}
 @media (prefers-reduced-motion:no-preference){.totop{transition:opacity .2s,transform .2s}}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:99px;font-size:14px;z-index:20}
 @media (prefers-reduced-motion:no-preference){.row,.seg{transition:background .15s,border-color .15s,color .15s}}
+@media (max-width:600px){.tab{padding:8px 9px}.tabs{gap:2px}}   /* 六個分頁在手機上一次放得下 */
 </style>
 </head>
 <body>
@@ -586,17 +597,18 @@ td.src>span{display:block}
 
   <div class="tabbar">
   <nav class="tabs" role="tablist">
-    <button class="tab" role="tab" id="tab-log" aria-selected="true" data-tab="log">逐日記錄</button>
+    <button class="tab" role="tab" id="tab-log" aria-selected="true" data-tab="log">每日</button>
     <button class="tab" role="tab" id="tab-rec" aria-selected="false" data-tab="rec">對帳</button>
-    <button class="tab" role="tab" id="tab-self" aria-selected="false" data-tab="self">自營團課</button>
+    <button class="tab" role="tab" id="tab-self" aria-selected="false" data-tab="self">博派</button>
     <button class="tab" role="tab" id="tab-fin" aria-selected="false" data-tab="fin">財務</button>
-    <button class="tab" role="tab" id="tab-sch" aria-selected="false" data-tab="sch">每週課表</button>
+    <button class="tab" role="tab" id="tab-off" aria-selected="false" data-tab="off">停課</button>
+    <button class="tab" role="tab" id="tab-sch" aria-selected="false" data-tab="sch">每周</button>
   </nav>
   <button class="histtab" id="histTab" type="button" aria-label="修改紀錄" title="修改紀錄" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg></button>
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_4</footer>
+  <footer class="appver">ver 20261114_5</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1147,16 +1159,17 @@ function setSub(key, val, why){   // why: 原因（undefined = 不動）；取�
   saveMonth(); render();
 }
 // 停課 / 代課的原因（選填），之後檢討用
-function setWhy(key, val){
-  const v = String(val||'').trim().slice(0,60);
-  const x = month.extras.find(x=>x.id===key);
-  if(x){ if(v) x.why = v; else delete x.why; saveMonth(); return; }
-  const it = findItem(key); if(!it) return;
-  const e = {...(month.entries[key]||{})};
+function setWhy(key, val, mk = monthKey){   // mk：停課分頁可以改別的月份
+  const v = String(val||'').trim().slice(0,60), mo = moOf(mk);
+  const save = () => mk===monthKey ? saveMonth() : queue('months/'+mk, mo);
+  const x = mo.extras.find(x=>x.id===key);
+  if(x){ if(v) x.why = v; else delete x.why; save(); return; }
+  let it = null; daysOfMonth(mk, mo).some(d=>d.items.some(i=>i.key===key && (it = i))); if(!it) return;
+  const e = {...(mo.entries[key]||{})};
   e.snap = e.snap || snapOf(it);
   if(v) e.why = v; else delete e.why;
-  month.entries[key] = e;
-  saveMonth();
+  mo.entries[key] = e;
+  save();
 }
 function refreshWhyList(){ const dl = document.getElementById('dl-why'); if(dl) dl.innerHTML = whyOptions().map(n=>`<option value="${esc(n)}">`).join(''); }   // 新打的原因馬上加進下拉選單
 const WHY_DEFAULT = ['學生生病受傷請假','學生私事請假','受訓/考證','場館休館','國定假日','颱風'];
@@ -1249,6 +1262,7 @@ function render(){
   else if(tab==='self') renderSelf();
   else if(tab==='fin') renderFin();
   else if(tab==='hist') renderHist();
+  else if(tab==='off') renderOff();
   else renderSched();
   if(focusId){ const f=document.getElementById(focusId); if(f && f!==document.activeElement) f.focus(); }
 }
@@ -1750,7 +1764,7 @@ function srPanel(key){
   const names = [...new Set(termSessions(t).flatMap(x=>x.single.map(y=>y.name)).filter(Boolean))];
   return `<div class="attpanel srpanel">
     ${s.over?`<div class="srover">⚠ 這堂 ${s.present} 人，超過上限 ${s.cap} 人</div>`:''}
-    <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，逐日記錄也會變停課">這堂停課</button></span></div>
+    <div class="atthead"><b>${md(ds)} ${esc(srShort(cid))} · 期課學員</b><span class="hint">預設都有來；請假的人把勾勾拿掉，之後可以到別堂補課</span><span class="attbtns"><button class="btn small" data-sroff="${esc(key)}|off" title="這堂取消，「每日」也會變停課">這堂停課</button></span></div>
     <div class="attgrid">${s.enrolled.map(st=>{ const lv = s.leave.includes(st.id);
       return `<label class="attm${lv?' leave':''}"><input type="checkbox" data-srlv="${esc(key)}|${st.id}"${lv?'':' checked'}>${esc(st.name)}${lv?'<small>請假</small>':''}</label>`; }).join('') || '<span class="hint">這堂沒有期課學員</span>'}</div>
     <div class="atthead"><b>補課</b><span class="hint">請假的學員來這堂補，或名單外的人代替請假的學員來（都不另收費）</span></div>
@@ -1846,7 +1860,7 @@ function renderSelf(){
     <div class="dgdates">${xs.map(y=>`<span class="sgchip">${md(y.s.ds)} ${esc(srShort(y.s.cid))}${y.g.for&&stuOf(y.g.for).st?` · 代 ${esc(stuOf(y.g.for).st.name)}${y.g.forKey?` ${md(y.g.forKey.slice(0,10))} ${esc(srShort(y.g.forKey.slice(11)))}`:''}`:''}${y.g.note?` · ${esc(y.g.note)}`:''}<button class="sgx" aria-label="刪除 ${md(y.s.ds)} 這筆" data-srgsdel="${esc(y.s.key)}|${y.i}">×</button></span>`).join('')}</div></li>`).join('');
   const sessOpts = sessions.filter(s=>s.status==='held').map(s=>`<option value="${esc(s.key)}"${s.ds===nextDate && s.cid===selfrun.cids[0]?' selected':''}>${md(s.ds)} ${esc(srShort(s.cid))}</option>`).join('');
   $('#view').innerHTML = `
-    <div class="toolbar"><span class="hint">${esc(t.name)}共 ${dates.length} 個日期、兩堂課。期課預繳（一種 ${dates.length} 堂 NT$${money((t.price||{}).one)}，兩種 ${dates.length*2} 堂 NT$${money((t.price||{}).both)}），單堂 NT$${money(t.single)}。點名在下面的表格或「逐日記錄」的「點名」按鈕。</span></div>
+    <div class="toolbar"><span class="hint">${esc(t.name)}共 ${dates.length} 個日期、兩堂課。期課預繳（一種 ${dates.length} 堂 NT$${money((t.price||{}).one)}，兩種 ${dates.length*2} 堂 NT$${money((t.price||{}).both)}），單堂 NT$${money(t.single)}。點名在下面的表格或「每日」的「點名」按鈕。</span></div>
     <div class="srterms">${terms.map(x=>`<button class="btn small${x.id===t.id?' primary':''}" data-srterm="${x.id}">${esc(x.name)}</button>`).join('')}<button class="btn small" data-srnew="1" aria-expanded="${srNewOpen}">＋ 開新一期</button></div>
     ${srNewOpen ? srNewForm() : ''}
     <section class="recsec card srsec" id="sr-set">
@@ -1855,7 +1869,7 @@ function renderSelf(){
         <li><b>一種 / 兩種課程價格</b>：新增學員時帶入的學費，改了不會動到已登記的學員（個別學費在下面學員表改）。</li>
         <li><b>單堂價</b>：單堂報名預設收多少。</li>
         <li><b>場地費</b>：每堂要扣掉的場地費，會影響每堂金額和淨收入。</li>
-        <li><b>上課日期</b>：這一期排定哪幾天上課，只有這些日期會出現在逐日記錄。排錯的日期才在這裡刪；臨時取消的課請在「場次點名」按「停課」（逐日記錄會一起變停課），要補一堂就加日期。</li>
+        <li><b>上課日期</b>：這一期排定哪幾天上課，只有這些日期會出現在「每日」。排錯的日期才在這裡刪；臨時取消的課請在「場次點名」按「停課」（「每日」會一起變停課），要補一堂就加日期。</li>
         <li><b>停課</b>：停掉的那堂不算錢也不扣場地費，學費改由其他有上的堂數分攤，整期學費不會少。</li>
         <li>每一期的價格和日期各自獨立，改這一期不會影響其他期。</li>
       </ul></details>
@@ -1885,7 +1899,7 @@ function renderSelf(){
       <div class="recstats">
         <div><span class="lab">整期淨收入</span><span class="big">NT$ ${money(net)}</span><span class="small">學費 ${money(fees)} + 單堂 ${money(singles)} − 場地 ${money(venue)}${unpaid.length?`（${unpaid.length} 位還沒繳 NT$${money(unpaidFee)}）`:''}</span></div>
         <div><span class="lab">${mm} 月收到的錢</span><span class="big">NT$ ${money(mFees + mSingles)}</span><span class="small">學費 ${money(mFees)}（繳費日在本月）· 單堂 ${money(mSingles)}</span></div>
-        <div><span class="lab">${mm} 月上課金額</span><span class="big">NT$ ${money(mValue)}</span><span class="small">${mS.length} 堂，學費按堂分攤 − 場地費，算進逐日記錄</span></div>
+        <div><span class="lab">${mm} 月上課金額</span><span class="big">NT$ ${money(mValue)}</span><span class="small">${mS.length} 堂，學費按堂分攤 − 場地費，算進「每日」</span></div>
       </div>
     </section>
     <section class="recsec card srsec" id="sr-sess">
@@ -2228,7 +2242,7 @@ function renderHist(){
   const hm = t => { const d = new Date(t); return pad(d.getHours())+':'+pad(d.getMinutes()); };
   $('#view').innerHTML = `
     <div class="toolbar histbar">
-      <button class="btn small" data-histback="1">← 回逐日記錄</button>
+      <button class="btn small" data-histback="1">← 回每日</button>
       <label>課程日期<input class="field" type="date" data-histday value="${histDay||''}"></label>
       ${histDay?`<button class="btn small" data-histclear="1">看全部</button>`:''}
       <input class="field" type="search" id="hist-q" placeholder="搜尋（課名、學生、地點…）" value="${esc(histQ)}">
@@ -2319,27 +2333,69 @@ function yearCsv(year){
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast(`已下載 ${year} 年度總表`);
 }
-// 停課・代課原因：本月清單＋今年依原因統計，檢討用
-function whySection(days){
-  const pick = (d, it) => it.status==='off' ? {kind:'停課', amt:it.pay} : (it.status==='held' && it.sub) ? {kind:'代課', amt:subAmt(it)} : null;
-  const list = []; days.forEach(d=>d.items.forEach(it=>{ const k = pick(d, it); if(k) list.push({...it, ...k, date:d.ds}); }));
-  const year = monthKey.slice(0,4), nowMk = TODAY.slice(0,7), stat = new Map();
-  for(let m=1; m<=12; m++){ const mk = year+'-'+pad(m); if(mk < START_MONTH || mk > nowMk) continue;
-    daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>TODAY) return; d.items.forEach(it=>{ const k = pick(d, it); if(!k) return;
-      const r = it.why || '（未填）'; if(!stat.has(r)) stat.set(r, {off:0, sub:0, offAmt:0, subAmt:0});
-      const s = stat.get(r); if(k.kind==='停課'){ s.off++; s.offAmt += k.amt; } else { s.sub++; s.subAmt += k.amt; } }); }); }
-  const rows = [...stat.entries()].sort((a,b)=>(a[0]==='（未填）')-(b[0]==='（未填）') || (b[1].off+b[1].sub)-(a[1].off+a[1].sub));
-  const blank = list.filter(x=>!x.why).length;
-  return `<section class="recsec card" id="rec-why">
-    <div class="rechead"><h2>停課・代課原因</h2><span class="hint">在「逐日記錄」停課或代課的課底下填原因，這裡整理起來方便檢討</span>
-      <span class="chip ${blank?'wait':'ok'} recleft">${list.length?(blank?`${blank} 堂沒填原因`:'都填了'):'本月沒有'}</span></div>
-    ${list.length?`<div class="tablewrap"><table class="fintable whytable">
-      <thead><tr><th>日期</th><th>課程</th><th>狀態</th><th>原因</th></tr></thead>
-      <tbody>${list.map(x=>`<tr><td>${md(x.date)}<small>${esc(x.time)}</small></td><td>${esc(x.content)}<small>${esc(x.place)}</small></td><td>${x.kind}${x.kind==='代課'?`<small>${esc(x.sub.name)}</small>`:''}</td><td>${x.why?esc(x.why):'<span class="muted">未填</span>'}</td></tr>`).join('')}</tbody></table></div>`:''}
-    ${rows.length?`<h3 class="whyh">${year} 年依原因統計${nowMk.startsWith(year)?`（算到今天 ${md(TODAY)}）`:''}</h3><div class="tablewrap"><table class="fintable whytable">
-      <thead><tr><th>原因</th><th class="r">停課</th><th class="r">沒收到 NT$</th><th class="r">代課</th><th class="r">轉出 NT$</th></tr></thead>
-      <tbody>${rows.map(([r,s])=>`<tr><td>${esc(r)}</td><td class="r">${s.off?s.off+' 堂':''}</td><td class="r">${s.off?money(s.offAmt):''}</td><td class="r">${s.sub?s.sub+' 堂':''}</td><td class="r">${s.sub?money(s.subAmt):''}</td></tr>`).join('')}</tbody></table></div>`:''}
-  </section>`;
+// 停課分頁：一段期間內停課／代課的課，依原因、依學生／地點統計，加上明細（可以直接補原因）
+let offRange = 'month', offFrom = '', offTo = '';
+function offList(from, to){
+  const out = [];
+  for(let mk = from.slice(0,7) < START_MONTH ? START_MONTH : from.slice(0,7); mk <= to.slice(0,7); mk = nextMk(mk)){
+    daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds<from || d.ds>to) return; d.items.forEach(it=>{
+      const k = it.status==='off' ? {kind:'停課', amt:it.pay} : (it.status==='held' && it.sub) ? {kind:'代課', amt:subAmt(it)} : null;
+      if(!k) return;
+      const who = it.sr ? {cat:'博派', name:srShort(it.sr.cid)} : isPrivate(it.content) ? {cat:'私教', name:privName(it.content)} : {cat:'團體課', name:canonPlace(it.place)||'（沒寫地點）'};
+      out.push({...it, ...k, ...who, date:d.ds, mk});
+    }); });
+  }
+  return out;
+}
+function offWhyCount(list){ return list.filter(x=>!x.why).length; }
+function renderOff(){
+  const y = monthKey.slice(0,4), [my,mm] = monthKey.split('-').map(Number);
+  let from, to, label;
+  if(offRange==='year'){ from = y+'-01-01'; to = y+'-12-31'; label = `${y} 年`; }
+  else if(offRange==='custom' && offFrom && offTo){ from = offFrom<=offTo?offFrom:offTo; to = offFrom<=offTo?offTo:offFrom; label = `${md(from)} ～ ${md(to)}`; }
+  else { from = monthKey+'-01'; to = ymd(new Date(my, mm, 0)); label = `${mm} 月`; }
+  const list = offList(from, to), offs = list.filter(x=>x.kind==='停課'), subs = list.filter(x=>x.kind==='代課');
+  const blank = offWhyCount(list), sum = (a, f=x=>x.amt) => a.reduce((s,x)=>s+f(x),0);
+  const group = keyOf => { const m = new Map(); list.forEach(x=>{ const k = keyOf(x); if(!m.has(k)) m.set(k, []); m.get(k).push(x); }); return [...m.entries()].sort((a,b)=>b[1].length-a[1].length); };
+  const cnt = a => { const o = a.filter(x=>x.kind==='停課'), u = a.filter(x=>x.kind==='代課');
+    return `<td class="r">${o.length?`${o.length} 堂<small>NT$ ${money(sum(o))}</small>`:''}</td><td class="r">${u.length?`${u.length} 堂<small>NT$ ${money(sum(u))}</small>`:''}</td>`; };
+  const byWhy = group(x=>x.why||'（未填）').sort((a,b)=>(a[0]==='（未填）')-(b[0]==='（未填）'));
+  const byWho = group(x=>x.cat+'｜'+x.name);
+  const mix = a => { const m = new Map(); a.forEach(x=>{ const r = x.why||'未填'; m.set(r, (m.get(r)||0)+1); }); return [...m.entries()].sort((p,q)=>q[1]-p[1]).map(([r,n])=>`${esc(r)} ${n}`).join('、'); };
+  const head = `<thead><tr><th>%s</th><th class="r">停課<small>沒收到</small></th><th class="r">代課<small>轉出</small></th></tr></thead>`;
+  $('#view').innerHTML = `
+    <div class="finupto card offrange">
+      <div class="btns">
+        <button class="btn small${offRange==='month'?' primary':''}" data-offrange="month">${mm} 月</button>
+        <button class="btn small${offRange==='year'?' primary':''}" data-offrange="year">${y} 年</button>
+        <button class="btn small${offRange==='custom'?' primary':''}" data-offrange="custom">自己選日期</button>
+      </div>
+      ${offRange==='custom'?`<label>從<input class="field" type="date" data-offfrom value="${offFrom||from}"></label><label>到<input class="field" type="date" data-offto value="${offTo||to}"></label>`:''}
+      <span class="hint">停課是沒收到的課；代課是場館付給教練、教練再轉給代課老師的課。原因在「每日」停課或代課的課底下填，也可以在下面明細直接補。</span>
+    </div>
+    <section class="recsec card">
+      <div class="rechead"><h2>${label} 停課・代課</h2><span class="chip ${blank?'wait':'ok'} recleft">${list.length?(blank?`${blank} 堂沒填原因`:'原因都填了'):'沒有'}</span></div>
+      <div class="recstats">
+        <div><span class="lab">停課</span><span class="big">${offs.length} 堂</span><span class="small">沒收到 NT$ ${money(sum(offs))}</span></div>
+        <div><span class="lab">代課</span><span class="big">${subs.length} 堂</span><span class="small">轉出 NT$ ${money(sum(subs))}</span></div>
+        <div><span class="lab">沒填原因</span><span class="big ${blank?'neg':''}">${blank} 堂</span><span class="small">在下面明細補</span></div>
+      </div>
+    </section>
+    ${list.length?`
+    <section class="recsec card"><div class="rechead"><h2>依原因</h2></div>
+      <div class="tablewrap"><table class="fintable whytable">${head.replace('%s','原因')}
+        <tbody>${byWhy.map(([r,a])=>`<tr><td>${esc(r)}</td>${cnt(a)}</tr>`).join('')}</tbody></table></div></section>
+    <section class="recsec card"><div class="rechead"><h2>依學生／地點</h2><span class="hint">私教看學生，團體課看地點</span></div>
+      <div class="tablewrap"><table class="fintable whytable"><thead><tr><th>對象</th><th class="r">停課<small>沒收到</small></th><th class="r">代課<small>轉出</small></th><th>原因</th></tr></thead>
+        <tbody>${byWho.map(([k,a])=>`<tr><td>${esc(a[0].name)}<small>${a[0].cat}</small></td>${cnt(a)}<td class="whymix">${mix(a)}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="recsec card"><div class="rechead"><h2>明細</h2><span class="hint">${list.length} 堂</span></div>
+      <div class="tablewrap"><table class="fintable whytable whylist">
+        <thead><tr><th>日期</th><th>課程</th><th>狀態</th><th>原因</th></tr></thead>
+        <tbody>${list.map(x=>`<tr><td>${md(x.date)}<small>週${DOW[new Date(x.date+'T00:00').getDay()]} ${esc(x.time)}</small></td><td>${esc(x.content)}<small>${esc(x.place)}</small></td>
+          <td><span class="${x.kind==='停課'?'kindoff':'kindsub'}">${x.kind}</span>${x.kind==='代課'?`<small>${esc(x.sub.name)}</small>`:''}<small>NT$ ${money(x.amt)}</small></td>
+          <td><span class="whycell${x.why?'':' empty'}"><input class="field whyin" data-why="${esc(x.key)}" data-whymk="${x.mk}" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(x.why)}" placeholder="未填"><button type="button" class="btn small whyok" hidden>確定</button></span></td></tr>`).join('')}</tbody></table></div>
+      <datalist id="dl-why">${whyOptions().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+    </section>`:''}`;
 }
 // 代課轉出: classes someone else taught for the coach; the venue still pays the coach, who passes it on
 function subSection(days){
@@ -2356,7 +2412,7 @@ function subSection(days){
     ${list.length?`<div class="tablewrap"><table class="fintable sublist">
       <thead><tr><th>日期</th><th>課程</th><th>代課老師</th><th class="r">轉出 NT$</th><th>已轉</th></tr></thead>
       <tbody>${list.map(x=>`<tr><td>${md(x.date)}<small>${esc(x.time)}</small></td><td>${esc(x.content)}<small>${esc(x.place)}</small></td><td>${esc(x.sub.name)}</td><td class="r">${money(amt(x))}</td>
-        <td><label class="subchk"><input type="checkbox" data-subpaid="${esc(x.key)}"${x.sub.paid?' checked':''}>${x.sub.paid?'已轉':'待轉'}</label></td></tr>`).join('')}</tbody></table></div>`:'<p class="finnote">在「逐日記錄」那堂課按「請人代」記錄。</p>'}
+        <td><label class="subchk"><input type="checkbox" data-subpaid="${esc(x.key)}"${x.sub.paid?' checked':''}>${x.sub.paid?'已轉':'待轉'}</label></td></tr>`).join('')}</tbody></table></div>`:'<p class="finnote">在「每日」那堂課按「請人代」記錄。</p>'}
   </section>`;
 }
 function renderRec(days){
@@ -2493,7 +2549,7 @@ function renderRec(days){
         const list = b.due.map(i=>`<li><label class="pccheck"><input type="checkbox" data-paid="${esc(i.key)}"${month.paid[i.key]?' checked':''}><span class="d">${Number(i.date.slice(5,7))}/${Number(i.date.slice(8,10))}</span><span class="t">${esc(i.time)} ${esc(i.content)}</span><span class="amt">NT$${money(i.pay)}</span><span class="st">${month.paid[i.key]?'已收':'未收'}</span></label></li>`).join('');
         html += `<tr class="ppdetail-row"><td colspan="6">
           ${b.due.length?`<ol class="pclist">${list}</ol>`:'<p class="note">這個月到目前還沒有上課。</p>'}
-          ${unpaid?`<div class="ppfoot"><span class="note">勾選代表那堂已經收到錢。也可以在「逐日記錄」按「收款」。</span><button class="btn small" data-pc-all="${esc(n)}">全部標為已收</button></div>`:''}
+          ${unpaid?`<div class="ppfoot"><span class="note">勾選代表那堂已經收到錢。也可以在「每日」按「收款」。</span><button class="btn small" data-pc-all="${esc(n)}">全部標為已收</button></div>`:''}
         </td></tr>`;
       }
       return html;
@@ -2515,12 +2571,12 @@ function renderRec(days){
   $('#view').innerHTML = `
     <div class="toolbar"><span class="hint">團體課、私教月結：收到款項後填「實收」。私教預繳：學生買課時按「登記」，上課自動扣堂。私教堂結：每堂收到錢就勾「已收」。每位私教學生都可以用「付款」選單切換方式。</span></div>
     <nav class="recnav card" id="recnav" aria-label="跳到對帳區塊"></nav>
+    ${(()=>{ const n = offWhyCount(offList(monthKey+'-01', monthKey+'-31')); return n ? `<button class="whynote card" data-gotab="off">本月有 <b>${n} 堂</b>停課／代課還沒填原因 →</button>` : ''; })()}
     ${invoiced({id:'rec-group', filter:s=>s.cat==='group', title:'團體課', sub:'按上課地點（付款單位）合計', col:'地點', unit:'個地點'})}
     ${prepaidSection()}
     ${perclassSection()}
     ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}
     ${subSection(days)}
-    ${whySection(days)}
     ${yearSection()}`;
   // Section shortcuts, each showing that section's status chip
   $('#recnav').innerHTML = [...document.querySelectorAll('.recsec')].map(sec=>{
@@ -2551,7 +2607,7 @@ function renderSched(){
   $('#view').innerHTML = `
     <div class="toolbar"><div class="weekstrip">${perDay.map(x=>`<span>週${DOW[x.d]} <b>${money(x.sum)}</b></span>`).join('')}<span>一週 <b>NT$ ${money(week)}</b></span></div>
       <button class="btn primary" id="addClass">＋ 新增固定課</button></div>
-    <p class="note" style="margin-top:8px">這是每個月自動展開的固定課表。在這裡新增、修改或刪除，只會影響今天以後的課，今天以前的帳不會變。以前某一天的課不一樣，請到「逐日記錄」那一天改金額、按停課或加臨時課。</p>
+    <p class="note" style="margin-top:8px">這是每個月自動展開的固定課表。在這裡新增、修改或刪除，只會影響今天以後的課，今天以前的帳不會變。以前某一天的課不一樣，請到「每日」那一天改金額、按停課或加臨時課。</p>
     <div class="card tablewrap sched" style="margin-top:8px"><table>
       <thead><tr><th>星期</th><th>時間</th><th>分鐘</th><th>地點</th><th>上課內容</th><th>薪水</th><th></th></tr></thead>
       <tbody>${rows}</tbody></table>${placeList('dl-sched-place')}</div>`;
@@ -2606,8 +2662,10 @@ document.addEventListener('click', e=>{
     if(off) e.s = 'off'; else delete e.s;
     mo.entries[k] = e; if(srOpen===k) srOpen = null;
     if(mk===monthKey) saveMonth(); else queue('months/'+mk, mo);
-    render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，逐日記錄也標成停課':'恢復有開'}`); return;
+    render(); toast(`${md(k.slice(0,10))} ${srShort(cid)} ${off?'停課，「每日」也標成停課':'恢復有開'}`); return;
   }
+  if(t.dataset.offrange){ offRange = t.dataset.offrange; render(); return; }
+  if(t.dataset.gotab){ offRange = 'month'; tab = t.dataset.gotab; render(); window.scrollTo(0,0); return; }
   if(t.dataset.histback){ tab = 'log'; render(); return; }
   if(t.dataset.histclear){ histDay = null; render(); return; }
   if(t.dataset.histdayGo){ histDay = t.dataset.histdayGo; histQ = ''; tab = 'hist'; render(); window.scrollTo(0,0); return; }
@@ -2730,7 +2788,9 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
-  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.defaultValue = el.value; whyBtn(el).hidden = true; refreshWhyList(); el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
+  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value, el.dataset.whymk || monthKey); el.defaultValue = el.value; whyBtn(el).hidden = true; refreshWhyList(); el.closest('.whyrow,.whycell')?.classList.toggle('empty', !el.value.trim()); if(tab==='off') setTimeout(()=>{ const a = document.activeElement; if(!(a && a.classList.contains('whyin'))) render(); }, 0); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
+  if(el.dataset.offfrom!==undefined){ offFrom = el.value; if(!offTo) offTo = el.closest('.offrange').querySelector('[data-offto]').value; render(); return; }
+  if(el.dataset.offto!==undefined){ offTo = el.value; if(!offFrom) offFrom = el.closest('.offrange').querySelector('[data-offfrom]').value; render(); return; }
   if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
   if(el.dataset.histday!==undefined){ histDay = el.value || null; render(); return; }
   if(el.dataset.subpaid!==undefined){
