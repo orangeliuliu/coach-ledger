@@ -608,7 +608,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_5</footer>
+  <footer class="appver">ver 20261114_6</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1085,7 +1085,7 @@ function daysOfMonth(mk = monthKey, mo = month){
     const ds = ymd(date), dow = date.getDay();
     const items = [];
     const seen = new Set();
-    schedule.filter(c=>classOn(c, ds) && (typeof selfrun!=='undefined' && isSR(c.id) ? !!termOf(ds) : c.dow===dow)).forEach(c=>{   // 自營團課 only on its term dates
+    schedule.filter(c=>classOn(c, ds) && (typeof selfrun!=='undefined' && isSR(c.id) ? !!termOf(ds) : c.dow===dow)).forEach(c=>{   // 博派 only on its term dates
       const key = ds+'_'+c.id; seen.add(key);
       const e = mo.entries[key] || {};
       const src = e.snap || c;   // a recorded class keeps the details it had at the time
@@ -1104,7 +1104,7 @@ function daysOfMonth(mk = monthKey, mo = month){
       items.push({key:x.id, date:ds, time:x.time, dur:x.dur, place:x.place, kind:x.kind, content:x.content,
         base:x.pay, pay:x.pay, mins: x.mins ?? x.dur, status:x.s||'held', extra:true});
     });
-    // 自營團課: the session's amount = 期課學費分攤 + 單堂 − 場地費
+    // 博派: the session's amount = 期課學費分攤 + 單堂 − 場地費
     items.forEach(it=>{
       if(it.extra || typeof selfrun==='undefined') return;
       const cid = it.key.slice(11); if(!isSR(cid)) return;
@@ -1415,7 +1415,7 @@ const isPrivate = content => /私教|私人課/.test(String(content||''));
 function sources(days){
   const map = new Map();
   days.forEach(d=>d.items.forEach(it=>{
-    if(it.selfrun) return;   // 自營團課 has its own section
+    if(it.selfrun) return;   // 博派 has its own section
     const cat = isPrivate(it.content) ? 'private' : 'group';
     const place = canonPlace(it.place);
     const client = cat==='private' ? privName(it.content) : '';
@@ -1532,7 +1532,7 @@ function setMode(name, mode){
 }
 const modeSelect = name => `<label class="modesel">付款<select class="field" data-mode-for="${esc(name)}" aria-label="${esc(name)} 付款方式">${Object.entries(MODES).map(([k,v])=>`<option value="${k}"${modeOf(name)===k?' selected':''}>${v}</option>`).join('')}</select></label>`;
 let pcDetail = null;
-/* ---------- 自營團課: 一期 8 個日期，預繳期課（一種 8 堂 / 兩種 16 堂）、單堂報名、請假補課 ---------- */
+/* ---------- 博派: 一期 8 個日期，預繳期課（一種 8 堂 / 兩種 16 堂）、單堂報名、請假補課 ---------- */
 // config/selfrun v4: {v, cids:[classId…], terms:[{id, name, dates:[ds…], price:{one, both}, single, venue, students:[{id, name, pkg:'both'|classId, fee, paid, from}]}]}
 // Each term keeps its own prices, so opening a new term never changes an old one.
 // month.att[ds_cid] = {leave:[studentId], makeup:[studentId of any term], guest:[{name, note, for:studentId, forKey:ds_cid, auto}] (名單外補課, no fee; `for`/`forKey` = whose leave, on which session, it covers; `auto` = that leave was added by this entry), single:[{name, amount}]}
@@ -1799,10 +1799,10 @@ function srNewForm(){
     <div class="btns"><button class="btn primary" type="submit">建立</button><button class="btn" type="button" data-srnew="1">取消</button></div>
   </form>`;
 }
-// 自營團課 tab: one term at a time — 場次點名, 學員, 單堂報名, 設定
+// 博派 tab: one term at a time — 場次點名, 學員, 單堂報名, 設定
 function renderSelf(){
   const terms = selfrun.terms || [];
-  if(!terms.length){ $('#view').innerHTML = '<p class="note" style="margin-top:12px">目前沒有自營團課。</p>'; return; }
+  if(!terms.length){ $('#view').innerHTML = '<p class="note" style="margin-top:12px">目前沒有博派。</p>'; return; }
   let t = terms.find(x=>x.id===srTermId);
   if(!t){ const inMonth = terms.filter(x=>x.dates.some(d=>d.slice(0,7)===monthKey)); t = inMonth.find(x=>x.dates.slice().sort().pop() >= TODAY) || inMonth.pop() || terms[terms.length-1]; }
   srShown = t.id;
@@ -1939,7 +1939,7 @@ function renderSelf(){
     </section>
 `;
 }
-/* ---------- 財務: 要留著的錢 (已經收了錢、還沒上的課), by 自營團課 and 私教課 ---------- */
+/* ---------- 財務: 要留著的錢 (已經收了錢、還沒上的課), by 博派 and 私教課 ---------- */
 // For one month: what came in, what was taught, and what is still owed at `asOf` (default: month end).
 // 私教課 covers every private student; only 預繳 students can leave something owed.
 function finMonth(mk, asOf){
@@ -1997,11 +1997,11 @@ function finList(f){
   const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
   return `<section class="recsec card finsec" id="fin-list">
       <div class="rechead"><h2>${mLabel(f.mk)}明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
-      <div class="fincats">${tab('all','全部')}${tab('sr','自營團課')}${tab('pv','私教課')}</div>
+      <div class="fincats">${tab('all','全部')}${tab('sr','博派')}${tab('pv','私教課')}</div>
       ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
         <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
         <tbody>${rows.map(x=>`<tr><td>${md(x.ds)}${x.time?`<small>${esc(x.time)}</small>`:''}</td>
-          <td><span class="fintag ${x.cat}">${x.cat==='sr'?'自營':'私教'}</span>${esc(x.what)}<small>${esc(x.note)}</small></td>
+          <td><span class="fintag ${x.cat}">${x.cat==='sr'?'博派':'私教'}</span>${esc(x.what)}<small>${esc(x.note)}</small></td>
           <td class="r">${x.cash?money(x.cash):'<span class="dim">—</span>'}</td><td class="r">${x.used?money(x.used):'<span class="dim">—</span>'}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td></td><td>合計</td><td class="r">${money(sum('cash'))}</td><td class="r">${money(sum('used'))}</td></tr></tfoot>
       </table></div>` : '<p class="finnote">這個月沒有。</p>'}
@@ -2045,16 +2045,16 @@ function renderFin(){
       <span class="lab">到 ${uptoText}要留著的錢${est?'（預估）':''}</span>
       <span class="val num"><span class="cur">NT$</span>${money(head.def)}</span>
       <span class="sub">已經收了錢、還沒上的課。這筆錢不要花掉。</span>
-      <span class="sub">自營團課 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
+      <span class="sub">博派 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
     </section>
-    ${block('自營團課', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
+    ${block('博派', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
     ${block('私教課', f.pv, {cash:`預繳購買 ${money(f.pv.buys)} ＋ 月結、堂結 ${money(f.pv.cash - f.pv.buys)}`, used:'本月所有私教課', def:'預繳學生還沒上完的堂數'})}
     <section class="recsec card finsec">
       <div class="rechead"><h2>每個月底要留著的錢</h2><span class="hint">點月份切換</span></div>
       <div class="tablewrap"><table class="fintable">
-        <thead><tr><th>月份</th><th class="r">自營團課</th><th class="r">私教課</th><th class="r">合計</th></tr></thead>
+        <thead><tr><th>月份</th><th class="r">博派</th><th class="r">私教課</th><th class="r">合計</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
-      <p class="finnote">團體課是上完課才領錢，不會有預收，所以不列在這裡；整體收入看最上方的「本月上課總額」。自營團課的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
+      <p class="finnote">團體課是上完課才領錢，不會有預收，所以不列在這裡；整體收入看最上方的「本月上課總額」。博派的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
     </section>
     ${finList(f)}`;
 }
@@ -2181,8 +2181,8 @@ function diffSelfrun(a, b){
   const out = [], TA = Object.fromEntries(((a&&a.terms)||[]).map(t=>[t.id,t])), TB = Object.fromEntries(((b&&b.terms)||[]).map(t=>[t.id,t]));
   new Set([...Object.keys(TA), ...Object.keys(TB)]).forEach(id=>{
     const x = TA[id], y = TB[id];
-    if(!x){ out.push({m:`自營團課：開新一期「${y.name}」（${y.dates.length} 堂、${y.students.length} 位學員）`}); return; }
-    if(!y){ out.push({m:`自營團課：刪除「${x.name}」`}); return; }
+    if(!x){ out.push({m:`博派：開新一期「${y.name}」（${y.dates.length} 堂、${y.students.length} 位學員）`}); return; }
+    if(!y){ out.push({m:`博派：刪除「${x.name}」`}); return; }
     const P = y.name;
     y.dates.filter(d=>!x.dates.includes(d)).forEach(d=>out.push({r:d, m:`${P}：加上課日期 ${md(d)}`}));
     x.dates.filter(d=>!y.dates.includes(d)).forEach(d=>out.push({r:d, m:`${P}：刪除上課日期 ${md(d)}`}));
@@ -2260,7 +2260,7 @@ function placeOf(name){
   for(const d of daysOfMonth()) for(const it of d.items) if(isPrivate(it.content) && privName(it.content)===name) return it.place;
   return '';
 }
-// 年度總表: every month of the year up to today, per venue / private student / 自營團課, plus the prepaid money received
+// 年度總表: every month of the year up to today, per venue / private student / 博派, plus the prepaid money received
 function yearData(year){
   const nowMk = TODAY.slice(0,7), months = [];
   for(let m=1; m<=12; m++){ const mk = year+'-'+pad(m); if(mk >= START_MONTH && mk <= nowMk) months.push(mk); }
@@ -2273,7 +2273,7 @@ function yearData(year){
     const upto = mk===nowMk ? TODAY : '9999';
     daysOfMonth(mk, moOf(mk)).forEach(d=>{ if(d.ds>upto) return; d.items.forEach(it=>{
       if(it.status!=='held') return;
-      if(it.sr) add('自營團課', srShort(it.sr.cid)+'（每堂淨額）', mk, it.pay);
+      if(it.sr) add('博派', srShort(it.sr.cid)+'（每堂淨額）', mk, it.pay);
       else if(isPrivate(it.content)) add('私教課', privName(it.content), mk, it.pay);
       else add('團體課', canonPlace(it.place) || '（沒寫地點）', mk, it.pay);
       if(it.sub) sub[mk] = (sub[mk]||0) + subAmt(it);
@@ -2281,7 +2281,7 @@ function yearData(year){
     const f = finMonth(mk, mk===nowMk ? TODAY : undefined);
     pre[mk] = {pv: f.pv.buys, sr: f.sr.cash};
   });
-  const order = {'團體課':0, '私教課':1, '自營團課':2};
+  const order = {'團體課':0, '私教課':1, '博派':2};
   const list = [...rows.values()].sort((a,b)=>order[a.cat]-order[b.cat] || a.name.localeCompare(b.name,'zh-Hant'));
   return {months, list, pre, sub};
 }
@@ -2310,9 +2310,9 @@ function yearSection(){
     </table></div>
     <div class="tablewrap"><table class="fintable ytable">
       <thead><tr><th>預繳實際收到的錢</th>${ms.map(mk=>`<th class="r">${Number(mk.slice(5))} 月</th>`).join('')}<th class="r">全年</th></tr></thead>
-      <tbody>${preRow('私教預繳購買','pv')}${preRow('自營團課學費','sr')}</tbody>
+      <tbody>${preRow('私教預繳購買','pv')}${preRow('博派學費','sr')}</tbody>
     </table></div>
-    <p class="finnote">上面是照上課計算的金額（團體課、私教課照課表與實際記錄，自營團課是每堂學費分攤＋單堂−場地費）。預繳的錢是收到那天一次收進來，另外列在下面。團體課、月結私教的實際匯款請看各月對帳的「實收」；報稅以扣繳憑單為準。</p>
+    <p class="finnote">上面是照上課計算的金額（團體課、私教課照課表與實際記錄，博派是每堂學費分攤＋單堂−場地費）。預繳的錢是收到那天一次收進來，另外列在下面。團體課、月結私教的實際匯款請看各月對帳的「實收」；報稅以扣繳憑單為準。</p>
   </section>`;
 }
 function yearCsv(year){
@@ -2325,7 +2325,7 @@ function yearCsv(year){
   lines[lines.length-1][ms.length+2] = lines[lines.length-1].slice(2, ms.length+2).reduce((a,v)=>a+v,0);
   lines.push([]);
   lines.push(['預繳實際收到','私教預繳購買', ...ms.map(mk=>Y.pre[mk].pv), ms.reduce((a,mk)=>a+Y.pre[mk].pv,0)]);
-  lines.push(['預繳實際收到','自營團課學費', ...ms.map(mk=>Y.pre[mk].sr), ms.reduce((a,mk)=>a+Y.pre[mk].sr,0)]);
+  lines.push(['預繳實際收到','博派學費', ...ms.map(mk=>Y.pre[mk].sr), ms.reduce((a,mk)=>a+Y.pre[mk].sr,0)]);
   const csv = '\ufeff' + lines.map(l=>l.map(q).join(',')).join('\r\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8'}));
@@ -2622,7 +2622,7 @@ function shiftMonth(n){
   const d = new Date(y, m-1+n, 1);
   const next = d.getFullYear()+'-'+pad(d.getMonth()+1);
   if(next < START_MONTH) return;
-  monthKey = next; srTermId = null;   // 自營團課 follows the month again until a term is picked
+  monthKey = next; srTermId = null;   // 博派 follows the month again until a term is picked
   addOpenFor=null; confirmBulk=false;
   watchMonth();
 }
