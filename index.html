@@ -563,6 +563,18 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
 .dayhead{position:relative;z-index:3;transform:translateY(var(--pin,0px));background:var(--surface)}
 .day.pinned .dayhead{box-shadow:0 2px 6px rgba(0,0,0,.08)}
 .histdate{position:relative;z-index:2;transform:translateY(var(--pin,0px));background:var(--surface)}
+.pageq{display:block;font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.recsum{margin-top:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;border-color:var(--off);background:var(--off-soft)}
+.recsum.running{border-color:var(--line);background:var(--surface)}
+.recsum.running .recsum-big{color:var(--ink);font-size:17px}
+.recsum.done{border-color:var(--ok);background:var(--ok-soft)}
+.recsum-big{font-size:20px;font-weight:700;color:var(--off)}
+.recsum-big.ok{color:var(--ok)}
+.recsum .sub{font-size:13px;color:var(--muted)}
+.recsum-list{margin:4px 0 0;padding-left:18px;display:grid;gap:4px;font-size:14px}
+.recsum-list a{color:var(--ink);text-decoration:none}
+.recsum-list a:hover{text-decoration:underline}
+.finscope{margin:12px 4px 0;font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -606,7 +618,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
     <button class="tab" role="tab" id="tab-log" aria-selected="true" data-tab="log">每日</button>
     <button class="tab" role="tab" id="tab-rec" aria-selected="false" data-tab="rec">對帳</button>
     <button class="tab" role="tab" id="tab-self" aria-selected="false" data-tab="self">博派</button>
-    <button class="tab" role="tab" id="tab-fin" aria-selected="false" data-tab="fin">財務</button>
+    <button class="tab" role="tab" id="tab-fin" aria-selected="false" data-tab="fin">預收</button>
     <button class="tab" role="tab" id="tab-off" aria-selected="false" data-tab="off">停課</button>
     <button class="tab" role="tab" id="tab-sch" aria-selected="false" data-tab="sch">每周</button>
   </nav>
@@ -614,7 +626,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_8</footer>
+  <footer class="appver">ver 20261114_9</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1966,7 +1978,7 @@ function renderSelf(){
     </section>
 `;
 }
-/* ---------- 財務: 要留著的錢 (已經收了錢、還沒上的課), by 博派 and 私教課 ---------- */
+/* ---------- 預收（原「財務」）: 不能花的錢 (已經收了錢、還沒上的課), by 博派 and 私教課 ---------- */
 // For one month: what came in, what was taught, and what is still owed at `asOf` (default: month end).
 // 私教課 covers every private student; only 預繳 students can leave something owed.
 function finMonth(mk, asOf){
@@ -1983,9 +1995,9 @@ function finMonth(mk, asOf){
     }
     else if(isPrivate(it.content)){
       const n = privName(it.content), pre = isPrepaid(n);
+      if(!pre) return;                                                          // 月結 / 堂結 是上完才收，不是預收，看「對帳」
       pv.used += it.pay;
-      if(!pre) pv.cash += it.pay;                                               // 月結 / 堂結: paid for as taught
-      list.push({ds:d.ds, time:it.time, cat:'pv', what:`${n} 上課`, note:`${MODES[modeOf(n)]}${it.extra?' · 加課':''}${pre?(ppStartOf(n) && d.ds>=ppStartOf(n) ? ' · 用預繳的堂數' : ' · 登記之前的課，不扣堂'):''}`, cash:pre?0:it.pay, used:it.pay});
+      list.push({ds:d.ds, time:it.time, cat:'pv', what:`${n} 上課`, note:`${MODES[modeOf(n)]}${it.extra?' · 加課':''}${ppStartOf(n) && d.ds>=ppStartOf(n) ? ' · 用預繳的堂數' : ' · 登記之前的課，不扣堂'}`, cash:0, used:it.pay});
     }
   }); });
   (selfrun.terms||[]).forEach(t=>t.students.forEach(st=>{ if((st.paid||'').slice(0,7)===mk && st.paid<=end){ sr.cash += st.fee||0;
@@ -2023,8 +2035,8 @@ function finList(f){
   const sum = k => rows.reduce((a,x)=>a+x[k],0);
   const tab = (k,label) => `<button class="btn small${finCat===k?' primary':''}" data-fincat="${k}">${label}</button>`;
   return `<section class="recsec card finsec" id="fin-list">
-      <div class="rechead"><h2>${mLabel(f.mk)}博派・私教明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
-      <div class="fincats">${tab('all','全部')}${tab('sr','博派')}${tab('pv','私教課')}</div>
+      <div class="rechead"><h2>${mLabel(f.mk)}預收明細</h2><span class="hint">上面數字的每一筆，依日期排序，算到 ${md(f.end)} · ${rows.length} 筆</span></div>
+      <div class="fincats">${tab('all','全部')}${tab('sr','博派')}${tab('pv','私教預繳')}</div>
       ${rows.length ? `<div class="tablewrap"><table class="fintable finlist">
         <thead><tr><th>日期</th><th>項目</th><th class="r">收到</th><th class="r">上課</th></tr></thead>
         <tbody>${rows.map(x=>`<tr><td>${md(x.ds)}${x.time?`<small>${esc(x.time)}</small>`:''}</td>
@@ -2063,26 +2075,27 @@ function renderFin(){
     return `<tr class="${h.mk===monthKey?'cur':''}${fut?' fut':''}"><td><button class="linkbtn" data-finmk="${h.mk}">${mLabel(h.mk)}</button>${fut?'<small>預估</small>':h.mk===nowMk?'<small>本月 · 預估月底</small>':''}</td>
       <td class="r">${money(h.sr.def)}</td><td class="r">${money(h.pv.def)}</td><td class="r"><b>${money(h.def)}</b></td></tr>`; }).join('');
   $('#view').innerHTML = `
+    <section class="card finhead">
+      <span class="pageq">預收的錢，有多少不能花？</span>
+      <span class="lab">到 ${uptoText}不能花的錢${est?'（預估）':''}</span>
+      <span class="val num"><span class="cur">NT$</span>${money(head.def)}</span>
+      <span class="sub">已經收了錢、還沒上的課。</span>
+      <span class="sub">博派 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
+    </section>
     <div class="finupto card">
       <label>算到哪一天<input class="field" type="date" data-finupto value="${upto}" min="${mStart}" max="${mEnd}"></label>
       <div class="btns">${isNow?`<button class="btn small${upto===TODAY?' primary':''}" data-finupto-set="${TODAY}">今天</button>`:''}<button class="btn small${upto===mEnd?' primary':''}" data-finupto-set="${mEnd}">月底</button></div>
       <span class="hint">${est?'選到還沒到的日子：照課表全開、已登記的停課和預繳估算。':'只算到這一天為止的課、繳費和購買。'}</span>
-      <span class="hint finscope">這頁只算<b>博派和私教課</b>（會先收錢再上課的）。團體課是上完才領錢，收入看「對帳」和最上方的本月上課總額。</span>
     </div>
-    <section class="card finhead">
-      <span class="lab">到 ${uptoText}要留著的錢${est?'（預估）':''}</span>
-      <span class="val num"><span class="cur">NT$</span>${money(head.def)}</span>
-      <span class="sub">已經收了錢、還沒上的課。這筆錢不要花掉。</span>
-      <span class="sub">博派 ${money(head.sr.def)} · 私教課 ${money(head.pv.def)}</span>
-    </section>
     ${block('博派', f.sr, {cash:'期課學費（繳費日在本月）', used:'本月上的課分攤到的學費', def:'已繳學費、還沒上的堂數'})}
-    ${block('私教課', f.pv, {cash:`預繳購買 ${money(f.pv.buys)} ＋ 月結、堂結 ${money(f.pv.cash - f.pv.buys)}`, used:'本月所有私教課', def:'預繳學生還沒上完的堂數'})}
+    ${block('私教課 · 預繳', f.pv, {cash:`本月 ${f.list.filter(x=>x.cat==='pv' && x.cash).length} 筆購買`, used:'預繳學生本月上的課', def:'預繳學生還沒上完的堂數'})}
+    <p class="finnote finscope">這頁只算<b>先收錢、之後才上課</b>的：博派學費和私教預繳。團體課、私教月結和堂結是上完才領錢，看「對帳」。</p>
     <section class="recsec card finsec">
-      <div class="rechead"><h2>每個月底要留著的錢</h2><span class="hint">點月份切換</span></div>
+      <div class="rechead"><h2>每個月底不能花的錢</h2><span class="hint">點月份切換</span></div>
       <div class="tablewrap"><table class="fintable">
         <thead><tr><th>月份</th><th class="r">博派</th><th class="r">私教課</th><th class="r">合計</th></tr></thead>
         <tbody>${rows}</tbody></table></div>
-      <p class="finnote">團體課是上完課才領錢，不會有預收，所以不列在這裡；整體收入看最上方的「本月上課總額」。博派的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
+      <p class="finnote">團體課、私教月結和堂結是上完課才領錢，不會有預收，所以不列在這裡。博派的單堂報名當天收當天用，也不列入。預估的月份照課表全開計算，還沒登記的續約和新學員不算在內。</p>
     </section>
     ${finList(f)}`;
 }
@@ -2458,7 +2471,7 @@ function renderRec(days){
   const upto = monthKey < TODAY.slice(0,7) ? monthEnd : TODAY;          // balances shown as of this day
   const uptoText = upto===TODAY ? '今天' : `${mm}/${new Date(my,mm,0).getDate()}`;
   let idx = 0;
-
+  const todo = [];   // 還沒收齊的：{sec, text, amt}
   // ---- invoiced sections (group classes, and private students paid monthly) ----
   const invoiced = sec => {
     const list = all.filter(sec.filter);
@@ -2469,6 +2482,8 @@ function renderRec(days){
       T.held+=s.held; T.heldN+=s.heldN;
       if(set){ T.recv+=r; T.dueOfFilled+=s.held; T.filled++; }
       const name = sec.private ? s.client : s.place;
+      if(!set && s.held>0) todo.push({sec:sec.id, text:`${name} 還沒收到`, amt:s.held});
+      else if(set && r < s.held) todo.push({sec:sec.id, text:`${name} 少收`, amt:s.held - r});
       const sub = sec.private ? s.place : [...s.classes].filter(Boolean).join('、');
       const toPP = sec.private ? modeSelect(s.client) : cutSelect(s.place);
       const per = s.period ? `<span class="period">結算 ${md(s.period[0])}～${md(s.period[1])}${s.partial?`（${md(s.period[0])}～${md(ymd(new Date(Number(START_MONTH.slice(0,4)), Number(START_MONTH.slice(5,7))-1, 0)))} 照課表估算，都算有開）`:''}</span>` : '';
@@ -2521,6 +2536,8 @@ function renderRec(days){
       const planned = monthPlanned[n]||0, used = monthHeld[n]||0;
       const lastEntry = (holder(n).entries||[]).slice(-1)[0];   // most recently registered entry
       if(!l.started || l.balance<=2 || (planned-used) > l.balance) T.warn++;
+      if(!l.started) todo.push({sec:'rec-prepaid', text:`${n} 還沒登記預繳`, amt:0});
+      else if(l.balance < 0 || (planned-used) > l.balance) todo.push({sec:'rec-prepaid', text:`${n} 預繳不夠，要續約`, amt:0});
       const acts = `<button class="btn small" data-pp-add="${esc(n)}">登記</button>${lastEntry?`<button class="btn small" data-pp-edit="${esc(n)}|${lastEntry.id}" title="修正最近一筆登記">修正</button>`:`<button class="btn small" disabled title="還沒有登記可以修正，先按「登記」">修正</button>`}<button class="btn small ghostish" data-pp-detail="${esc(n)}" aria-expanded="${ppDetail===n}">${ppDetail===n?'收起':'明細'}</button>`;
       let html = `<tr class="pprow">
         <td class="src"><b>${esc(n)}</b><span>${esc(place)}${time?'':` · 單堂 NT$${money(unitPriceOf(n))}`}</span>${time?`<label class="ratel">每小時 NT$<input class="field ratein" type="number" min="0" step="50" inputmode="numeric" value="${hourlyRateOf(n)}" data-rate-for="${esc(n)}" aria-label="${esc(n)} 每小時收費"></label>`:''}<div class="selrow">${modeSelect(n)}${unitSelect(n)}</div><div class="m-acts">${acts}</div></td>
@@ -2565,6 +2582,7 @@ function renderRec(days){
       const paidItems = b.due.filter(i=>month.paid[i.key]);
       const paid = paidItems.reduce((a,i)=>a+i.pay,0), unpaid = b.due.length - paidItems.length;
       T.due+=due; T.paid+=paid; T.unpaidN+=unpaid; T.dueN+=b.due.length;
+      if(unpaid) todo.push({sec:'rec-perclass', text:`${n} ${unpaid} 堂未收`, amt:due - paid});
       let html = `<tr>
         <td class="src"><b>${esc(n)}</b><span>${esc(placeOf(n))} · 單堂 NT$${money(unitPriceOf(n))}</span>${modeSelect(n)}<div class="m-acts"><button class="btn small" data-pc-detail="${esc(n)}" aria-expanded="${pcDetail===n}">${pcDetail===n?'收起':'逐堂勾選'}</button></div></td>
         <td class="r"><span class="big">${b.due.length}</span> <span class="small">堂</span>${b.later?`<div class="small">本月還排 ${b.later} 堂</div>`:''}</td>
@@ -2596,14 +2614,27 @@ function renderRec(days){
     </section>`;
   };
 
+  const secGroup = invoiced({id:'rec-group', filter:s=>s.cat==='group', title:'團體課', sub:'按上課地點（付款單位）合計', col:'地點', unit:'個地點'});
+  const secPre = prepaidSection(), secPc = perclassSection();
+  const secMon = invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'});
+  const owe = todo.reduce((a,x)=>a+x.amt,0), running = monthKey >= TODAY.slice(0,7);
+  const sumCard = `<section class="card recsum${todo.length?(running?' running':''):' done'}">
+      <span class="pageq">該收的錢，收齊了嗎？</span>
+      ${todo.length ? (running
+        ? `<span class="recsum-big">${mm} 月還沒結束，${todo.length} 筆還沒收到</span><span class="sub">場館多半下個月才匯款，月底過後再回來看。金額是整個月的應收。</span>`
+        : `<span class="recsum-big">還有 ${todo.length} 筆沒收齊${owe?`，差 NT$ ${money(owe)}`:''}</span>`)
+        + `<ul class="recsum-list">${todo.map(x=>`<li><a href="#${x.sec}" data-jump="${x.sec}">${esc(x.text)}${x.amt?` <b>NT$ ${money(x.amt)}</b>`:''}</a></li>`).join('')}</ul>`
+      : `<span class="recsum-big ok">✓ ${mm} 月都收齊了</span>`}
+    </section>`;
   $('#view').innerHTML = `
+    ${sumCard}
     <div class="toolbar"><span class="hint">團體課、私教月結：收到款項後填「實收」。私教預繳：學生買課時按「登記」，上課自動扣堂。私教堂結：每堂收到錢就勾「已收」。每位私教學生都可以用「付款」選單切換方式。</span></div>
     <nav class="recnav card" id="recnav" aria-label="跳到對帳區塊"></nav>
     ${(()=>{ const n = offWhyCount(offList(monthKey+'-01', monthKey+'-31')); return n ? `<button class="whynote card" data-gotab="off">本月有 <b>${n} 堂</b>停課／代課還沒填原因 →</button>` : ''; })()}
-    ${invoiced({id:'rec-group', filter:s=>s.cat==='group', title:'團體課', sub:'按上課地點（付款單位）合計', col:'地點', unit:'個地點'})}
-    ${prepaidSection()}
-    ${perclassSection()}
-    ${invoiced({id:'rec-monthly', filter:s=>s.cat==='private' && modeOf(s.client)==='monthly', private:true, title:'私教課 · 月結', sub:'月底一次收', col:'學生', unit:'位學生'})}
+    ${secGroup}
+    ${secPre}
+    ${secPc}
+    ${secMon}
     ${subSection(days)}
     ${yearSection()}`;
   // Section shortcuts, each showing that section's status chip
