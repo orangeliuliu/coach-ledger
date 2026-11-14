@@ -596,7 +596,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_3</footer>
+  <footer class="appver">ver 20261114_4</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1158,6 +1158,7 @@ function setWhy(key, val){
   month.entries[key] = e;
   saveMonth();
 }
+function refreshWhyList(){ const dl = document.getElementById('dl-why'); if(dl) dl.innerHTML = whyOptions().map(n=>`<option value="${esc(n)}">`).join(''); }   // 新打的原因馬上加進下拉選單
 const WHY_DEFAULT = ['學生生病受傷請假','學生私事請假','受訓/考證','場館休館','國定假日','颱風'];
 function whyOptions(){
   const cnt = new Map();
@@ -2729,7 +2730,7 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
-  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.defaultValue = el.value; whyBtn(el).hidden = true; el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
+  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.defaultValue = el.value; whyBtn(el).hidden = true; refreshWhyList(); el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
   if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
   if(el.dataset.histday!==undefined){ histDay = el.value || null; render(); return; }
   if(el.dataset.subpaid!==undefined){
