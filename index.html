@@ -142,6 +142,7 @@ form.inline .field.num{width:80px}
 .row.subbed + .whyrow{background:var(--wait-soft)}
 .whyrow label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);white-space:nowrap}
 .whyrow .whyin{flex:1;min-width:0;max-width:420px;padding:6px 10px;font-size:14px}
+.whyrow .whyok{flex:none}
 .whyrow.empty .whyin{border-style:dashed}
 @media (max-width:600px){.whyrow{padding-left:14px}}
 .whytable td small{display:block;color:var(--muted);font-size:12px}
@@ -595,7 +596,7 @@ td.src>span{display:block}
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_2</footer>
+  <footer class="appver">ver 20261114_3</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1355,7 +1356,7 @@ function renderLog(days){
           ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
         </div>
       </div>`;
-      if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(it.why)}" placeholder="選填，例如：場館休館"></label></div>`;
+      if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(it.why)}" placeholder="選填，例如：場館休館"><button type="button" class="btn small whyok" data-whyok="${esc(it.key)}" hidden>確定</button></label></div>`;
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
       if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
         <span class="subrule">⚠ 場館自己找人、自己付錢 → 不要記代課，按「<b>停課</b>」<br>✓ 場館付給教練、教練再轉給代課老師 → 在這裡記代課</span>
@@ -2715,6 +2716,11 @@ document.addEventListener('keydown', e=>{   // 原因欄：按 Enter（手機的
   const el = e.target;
   if(e.key==='Enter' && !e.isComposing && el.classList && el.classList.contains('whyin')){ e.preventDefault(); el.blur(); }
 });
+// 原因欄有改動時才出現「確定」按鈕；按下去存好、按鈕收起
+const whyBtn = el => el.parentElement.querySelector('.whyok');
+document.addEventListener('input', e=>{ const el = e.target; if(el.classList && el.classList.contains('whyin')) whyBtn(el).hidden = el.value.trim()===el.defaultValue.trim(); });
+document.addEventListener('pointerdown', e=>{ if(e.target.closest('.whyok')) e.preventDefault(); });   // 不要先失焦
+document.addEventListener('click', e=>{ const b = e.target.closest('.whyok'); if(!b) return; const el = b.parentElement.querySelector('.whyin'); el.blur(); });
 document.addEventListener('change', e=>{
   const el = e.target;
   if(el.dataset.modeFor!==undefined){
@@ -2723,7 +2729,7 @@ document.addEventListener('change', e=>{
     if(m==='prepaid' && !(prepaid.students[n].entries||[]).length) ppOpen = n;
     render(); toast(`${n} 改成${MODES[m]}`); return;
   }
-  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
+  if(el.dataset.why!==undefined){ setWhy(el.dataset.why, el.value); el.defaultValue = el.value; whyBtn(el).hidden = true; el.closest('.whyrow')?.classList.toggle('empty', !el.value.trim()); toast(el.value.trim()?'已記下原因':'已清除原因'); return; }
   if(el.dataset.finupto!==undefined){ if(el.value) finUpto = el.value; render(); return; }
   if(el.dataset.histday!==undefined){ histDay = el.value || null; render(); return; }
   if(el.dataset.subpaid!==undefined){
