@@ -626,7 +626,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261114_9</footer>
+  <footer class="appver">ver 20261118_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1195,8 +1195,9 @@ function whyOptions(){
   const cnt = new Map();
   try{ Object.keys(localStorage).filter(k=>k.startsWith(LS+'months/')).forEach(k=>{ const mo = JSON.parse(localStorage.getItem(k))||{};
     [...Object.values(mo.entries||{}), ...(mo.extras||[])].forEach(e=>{ if(e.why) cnt.set(e.why, (cnt.get(e.why)||0)+1); }); }); }catch(e){}
-  const used = [...cnt.entries()].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
-  return [...new Set([...used, ...WHY_DEFAULT])];
+  // 依拼音排序（場館休館、國定假日、受訓/考證、颱風、學生…）
+  let cmp; try{ cmp = new Intl.Collator('zh-u-co-pinyin').compare; }catch(e){ cmp = (a,b)=>a.localeCompare(b,'zh'); }
+  return [...new Set([...cnt.keys(), ...WHY_DEFAULT])].sort(cmp);
 }
 function subNames(){
   const set = new Set();
