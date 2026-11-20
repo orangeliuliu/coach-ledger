@@ -634,7 +634,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261120_1</footer>
+  <footer class="appver">ver 20261120_2</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1878,6 +1878,11 @@ function renderSelf(){
   if(!t){ const inMonth = terms.filter(x=>x.dates.some(d=>d.slice(0,7)===monthKey)); t = inMonth.find(x=>x.dates.slice().sort().pop() >= TODAY) || inMonth.pop() || terms[terms.length-1]; }
   srShown = t.id;
   const sessions = termSessions(t), tally = srTally(t, sessions);
+  // 上一期還沒補完的（沒折抵掉的）帶到這期：這期可以補
+  const prevT = {};
+  t.students.forEach(st=>{ const p = prevStu(t, st.name); if(!p.st) return;
+    const pt = prevT[p.t.id] || (prevT[p.t.id] = srTally(p.t, termSessions(p.t)));
+    const n = (pt[p.st.id]||{}).owed || 0; if(n) tally[st.id].prevOwed = {n, term:p.t.name, dates:pt[p.st.id].leaveDates.filter(l=>!l.by)}; });
   const held = sessions.filter(s=>s.status==='held');
   const fees = t.students.reduce((a,st)=>a+(st.fee||0),0);
   const singles = held.reduce((a,s)=>a+s.singles,0), singleN = held.reduce((a,s)=>a+s.single.length,0);
@@ -1887,7 +1892,7 @@ function renderSelf(){
   const mS = held.filter(s=>s.ds.slice(0,7)===monthKey);
   const mSingles = mS.reduce((a,s)=>a+s.singles,0), mValue = mS.reduce((a,s)=>a+s.pay,0);
   const [my,mm] = monthKey.split('-').map(Number);
-  const owedN = Object.values(tally).filter(x=>x.owed).length;
+  const owedN = Object.values(tally).filter(x=>x.owed || x.prevOwed).length;
   const unpaid = t.students.filter(st=>!st.paid), unpaidFee = unpaid.reduce((a,st)=>a+(st.fee||0),0);
   const dates = t.dates.slice().sort();
   // 場次點名: rows = dates, columns = classes
@@ -1925,6 +1930,7 @@ function renderSelf(){
         ${x.leave?`<div class="small">請假 ${x.leaveDates.map(s=>`${md(s.ds)}${srShort(s.cid)}${s.by?`（${esc(s.by)} 代補）`:''}`).join('、')}</div>`:''}
         ${x.makeup?`<div class="small">補課 ${x.makeupDates.map(s=>`${md(s.ds)}${srShort(s.cid)}${s.by?`（${esc(s.by)}代${s.forKey?` ${md(s.forKey.slice(0,10))}${srShort(s.forKey.slice(11))}`:''}）`:''}`).join('、')}</div>`:''}
         ${x.owed?`<span class="chip wait">待補 ${x.owed} 堂</span>`:''}${x.ahead?`<span class="chip ok">先補了 ${x.ahead} 堂</span>`:''}
+        ${x.prevOwed?`<span class="chip wait" title="${esc(x.prevOwed.term)}請假：${x.prevOwed.dates.map(l=>md(l.ds)+srShort(l.cid)).join('、')}">${esc(x.prevOwed.term)}待補 ${x.prevOwed.n} 堂</span>`:''}
         ${x.carriedN?`<span class="chip ${x.carriedN > Math.max(0, x.leave - x.makeup)?'wait':'ok'}">已折抵 ${x.carriedN} 堂到${esc(x.carried.map(c=>c.term).join('、'))}${x.carriedN > Math.max(0, x.leave - x.makeup)?`（這期沒補的只有 ${Math.max(0, x.leave - x.makeup)} 堂）`:''}</span>`:''}${x.nomk && x.leave?`<span class="chip ok">請假 ${x.leave} 堂已扣學費</span>`:''}</td>
       <td class="ppact"><button class="del" title="刪除學員" aria-label="刪除 ${esc(st.name)}" data-srdel="${st.id}">×</button></td>
     </tr>${del}`;
