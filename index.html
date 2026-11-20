@@ -575,6 +575,14 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
 .recsum-list a{color:var(--ink);text-decoration:none}
 .recsum-list a:hover{text-decoration:underline}
 .finscope{margin:12px 4px 0;font-size:13px;color:var(--muted)}
+.srcarry{display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-top:6px}
+.srcarry label.small{flex-direction:row;align-items:center;gap:4px;margin-top:0}
+.srcarry label.small .field{width:52px}
+.srcarry label.small em{font-style:normal}
+.srcarry .chk input{margin:0}
+.srcalc2{font-size:11px;color:var(--muted);text-align:right}
+.srcarryopen{display:block;margin:6px 0 0 auto;font-size:11px}
+.srcalc2 b{color:var(--ink)}
 </style>
 </head>
 <body>
@@ -626,7 +634,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261118_1</footer>
+  <footer class="appver">ver 20261120_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1573,7 +1581,8 @@ function setMode(name, mode){
 const modeSelect = name => `<label class="modesel">付款<select class="field" data-mode-for="${esc(name)}" aria-label="${esc(name)} 付款方式">${Object.entries(MODES).map(([k,v])=>`<option value="${k}"${modeOf(name)===k?' selected':''}>${v}</option>`).join('')}</select></label>`;
 let pcDetail = null;
 /* ---------- 博派: 一期 8 個日期，預繳期課（一種 8 堂 / 兩種 16 堂）、單堂報名、請假補課 ---------- */
-// config/selfrun v4: {v, cids:[classId…], terms:[{id, name, dates:[ds…], price:{one, both}, single, venue, students:[{id, name, pkg:'both'|classId, fee, paid, from}]}]}
+// config/selfrun v4: {v, cids:[classId…], terms:[{id, name, dates:[ds…], price:{one, both}, single, venue, students:[{id, name, pkg:'both'|classId, fee, paid, from, carry?:{n, from?:上一期同一位學員的 id}, nomk?:true}]}]}
+//   carry：折抵 N 堂（之前請假沒補，從這期學費扣掉）；nomk：這期請假直接扣學費、不補課
 // Each term keeps its own prices, so opening a new term never changes an old one.
 // month.att[ds_cid] = {leave:[studentId], makeup:[studentId of any term], guest:[{name, note, for:studentId, forKey:ds_cid, auto}] (名單外補課, no fee; `for`/`forKey` = whose leave, on which session, it covers; `auto` = that leave was added by this entry), single:[{name, amount}]}
 let selfrun = {v:4, cids:[], terms:[]};
@@ -1597,6 +1606,22 @@ const inClass = (st, cid) => st.pkg==='both' || st.pkg===cid;
 const startOf = (t, st) => st.from || t.dates[0];
 const pkgPrice = (pkg, t) => pkg==='both' ? ((t.price||{}).both||0) : ((t.price||{}).one||0);
 function srShort(cid){ const c = schedule.find(x=>x.id===cid) || {}; const s = c.content||cid; return /combat/i.test(s) ? 'Combat' : /肌力/.test(s) ? '肌力' : s; }
+// 方案每堂的價錢（原價 ÷ 方案的堂數），折抵、請假扣學費用
+const pkgRate = (pkg, t) => { const n = t.dates.length * (pkg==='both' ? selfrun.cids.length : 1); return n ? pkgPrice(pkg, t) / n : 0; };
+// 上一期（日期在這期之前、最晚的那期）同名的學員
+function prevStu(t, name){
+  const k = normKey(name), prev = (selfrun.terms||[]).filter(x=>x!==t && x.dates.length && x.dates.slice().sort()[0] < t.dates.slice().sort()[0])
+    .sort((a,b)=>a.dates.slice().sort()[0] < b.dates.slice().sort()[0] ? 1 : -1);
+  for(const pt of prev){ const st = pt.students.find(s=>normKey(s.name)===k); if(st) return {t:pt, st}; }
+  return {};
+}
+// 這位學員這期應繳：原價 − 折抵 − （請假扣學費時）這期請假
+function srDue(t, st, leaves){
+  const list = pkgPrice(st.pkg, t), c = st.carry || {}, src = c.from ? stuOf(c.from) : {};
+  const carryAmt = Math.round((c.n||0) * (src.st ? pkgRate(src.st.pkg, src.t) : pkgRate(st.pkg, t)));
+  const leaveAmt = st.nomk ? Math.round(leaves * pkgRate(st.pkg, t)) : 0;
+  return {list, carryAmt, leaveAmt, due: Math.max(0, list - carryAmt - leaveAmt), src};
+}
 const pkgName = (pkg, t) => pkg==='both' ? `兩種（${t.dates.length*selfrun.cids.length} 堂）` : `${srShort(pkg)}（${t.dates.length} 堂）`;
 // one session's share of a student's fee: fee ÷ the sessions the package covers from their start date
 // 停課 sessions of a term (read from each month's records; `mo` stands in for its own month when given)
@@ -1677,10 +1702,16 @@ function srTally(t, sessions){
     s.guest.forEach(g=>{ const x = g.for && r[g.for]; if(!x) return; x.makeup++; x.makeupDates.push({...s, by:g.name, forKey:g.forKey});   // someone else came in their place
       const lv = g.forKey && x.leaveDates.find(l=>l.key===g.forKey); if(lv) lv.by = `${g.name} ${md(s.ds)}${srShort(s.cid)}`; });
   }));
-  Object.values(r).forEach(x=>{ x.owed = Math.max(0, x.leave - x.makeup); x.ahead = Math.max(0, x.makeup - x.leave); });
+  // 折抵到之後某一期的堂數（那期學員的 carry.from 指向這裡）
+  (selfrun.terms||[]).forEach(tt=>tt.students.forEach(u=>{ const c = u.carry; if(c && c.from && r[c.from]) (r[c.from].carried = r[c.from].carried || []).push({n:c.n||0, term:tt.name}); }));
+  t.students.forEach(st=>{ const x = r[st.id]; x.carriedN = (x.carried||[]).reduce((a,c)=>a+c.n,0); x.nomk = !!st.nomk; });
+  Object.values(r).forEach(x=>{
+    const settled = x.nomk ? x.leave : x.carriedN;   // 請假扣學費：請假都不用補；折抵到下一期：那幾堂不用補
+    x.owed = Math.max(0, x.leave - x.makeup - settled); x.ahead = Math.max(0, x.makeup - x.leave);
+  });
   return r;
 }
-let srOpen = null, srDel = null, srTermId = null, srShown = null;
+let srCarryOpen = null, srOpen = null, srDel = null, srTermId = null, srShown = null;
 function stuOf(id){ for(const t of selfrun.terms||[]){ const st = t.students.find(s=>s.id===id); if(st) return {t, st}; } return {}; }
 function holder(n){ return prepaid.students[n] || (prepaid.students[n] = {entries:[]}); }
 function saveHolder(){ savePrepaid(); }
@@ -1873,17 +1904,28 @@ function renderSelf(){
   }).join('');
   // 學員
   const pkgSel = st => `<select class="field" data-srpkg="${st.id}" aria-label="${esc(st.name)} 報名方案"><option value="both"${st.pkg==='both'?' selected':''}>${pkgName('both', t)}</option>${selfrun.cids.map(cid=>`<option value="${cid}"${st.pkg===cid?' selected':''}>${pkgName(cid, t)}</option>`).join('')}</select>`;
+  // 學費下面：折抵、請假扣學費，有設定時列出算法
+  const feeCalc = (st, x) => {
+    const c = st.carry || {}, d = srDue(t, st, x.leave), on = (c.n||0) > 0 || st.nomk;
+    if(!on && srCarryOpen!==st.id) return `<button class="linkbtn srcarryopen" data-srcarryopen="${st.id}">折抵／請假扣學費</button>`;
+    const calc = on ? `<span class="srcalc2">原價 ${money(d.list)}${d.carryAmt?` − 折抵${d.src.t?esc(d.src.t.name):'之前'} ${c.n} 堂 ${money(d.carryAmt)}`:''}${d.leaveAmt?` − 這期請假 ${x.leave} 堂 ${money(d.leaveAmt)}`:''} = <b>${money(d.due)}</b></span>${(st.fee||0)!==d.due?`<span class="chip wait">學費跟算出來差 ${money(Math.abs((st.fee||0)-d.due))}</span>`:''}` : '';
+    return `<div class="srcarry">
+      <label class="small">折抵<input class="field num" type="number" min="0" step="1" inputmode="numeric" value="${c.n||''}" placeholder="0" data-srcarry="${st.id}" aria-label="${esc(st.name)} 折抵堂數">堂</label>
+      <label class="small chk"><input type="checkbox" data-srnomk="${st.id}"${st.nomk?' checked':''}>這期請假直接扣學費</label>
+      ${calc}</div>`;
+  };
   const stRows = t.students.map(st=>{
     const x = tally[st.id];
     const del = srDel===st.id ? `<tr class="mdelrow"><td colspan="4"><p><b>${esc(st.name)}</b>：確定要從${esc(t.name)}刪除？</p>
       <div class="mdelopts"><div><button class="btn danger" data-srdelyes="${st.id}">刪除</button><button class="btn" data-srdelno="1">取消</button><span class="hint">學費、請假、補課紀錄都會刪掉，已上過的課金額會重算。加錯人才用。</span></div></div></td></tr>` : '';
     return `<tr class="pprow">
       <td class="src"><b>${esc(st.name)}</b>${st.paid?'':'<span class="chip wait">未繳費</span>'}${pkgSel(st)}${startOf(t, st)!==dates[0]?`<span>從 ${md(startOf(t, st))} 開始</span>`:''}<div class="m-acts"><button class="btn small" data-srdel="${st.id}">刪除</button></div></td>
-      <td class="r srfee"><label>NT$<input class="field num" type="number" min="0" step="100" inputmode="numeric" value="${st.fee||0}" data-srfee="${st.id}" aria-label="${esc(st.name)} 學費"></label><label class="small">繳費日<input class="field" type="date" value="${st.paid||''}" data-srpaid="${st.id}" aria-label="${esc(st.name)} 繳費日"></label></td>
+      <td class="r srfee"><label>NT$<input class="field num" type="number" min="0" step="100" inputmode="numeric" value="${st.fee||0}" data-srfee="${st.id}" aria-label="${esc(st.name)} 學費"></label><label class="small">繳費日<input class="field" type="date" value="${st.paid||''}" data-srpaid="${st.id}" aria-label="${esc(st.name)} 繳費日"></label>${feeCalc(st, x)}</td>
       <td class="r"><span class="big">${x.came}</span><span class="small"> / ${x.due} 堂</span>
         ${x.leave?`<div class="small">請假 ${x.leaveDates.map(s=>`${md(s.ds)}${srShort(s.cid)}${s.by?`（${esc(s.by)} 代補）`:''}`).join('、')}</div>`:''}
         ${x.makeup?`<div class="small">補課 ${x.makeupDates.map(s=>`${md(s.ds)}${srShort(s.cid)}${s.by?`（${esc(s.by)}代${s.forKey?` ${md(s.forKey.slice(0,10))}${srShort(s.forKey.slice(11))}`:''}）`:''}`).join('、')}</div>`:''}
-        ${x.owed?`<span class="chip wait">待補 ${x.owed} 堂</span>`:''}${x.ahead?`<span class="chip ok">先補了 ${x.ahead} 堂</span>`:''}</td>
+        ${x.owed?`<span class="chip wait">待補 ${x.owed} 堂</span>`:''}${x.ahead?`<span class="chip ok">先補了 ${x.ahead} 堂</span>`:''}
+        ${x.carriedN?`<span class="chip ${x.carriedN > Math.max(0, x.leave - x.makeup)?'wait':'ok'}">已折抵 ${x.carriedN} 堂到${esc(x.carried.map(c=>c.term).join('、'))}${x.carriedN > Math.max(0, x.leave - x.makeup)?`（這期沒補的只有 ${Math.max(0, x.leave - x.makeup)} 堂）`:''}</span>`:''}${x.nomk && x.leave?`<span class="chip ok">請假 ${x.leave} 堂已扣學費</span>`:''}</td>
       <td class="ppact"><button class="del" title="刪除學員" aria-label="刪除 ${esc(st.name)}" data-srdel="${st.id}">×</button></td>
     </tr>${del}`;
   }).join('');
@@ -2238,7 +2280,10 @@ function diffSelfrun(a, b){
       const s = SA[sid], u = SB[sid];
       if(!s){ out.push({m:`${P}：新增學員 ${u.name}（${pkgName(u.pkg, y)} · NT$${money(u.fee)}）`}); return; }
       if(!u){ out.push({m:`${P}：刪除學員 ${s.name}`}); return; }
+      if(s.name !== u.name) out.push({m:`${P}：學員 ${s.name} 改名為 ${u.name}`});
       if(s.pkg !== u.pkg) out.push({m:`${P}：${u.name} 方案改成 ${pkgName(u.pkg, y)}`});
+      if(((s.carry||{}).n||0) !== ((u.carry||{}).n||0)) out.push({m:`${P}：${u.name} 折抵 ${(s.carry||{}).n||0} → ${(u.carry||{}).n||0} 堂`});
+      if(!!s.nomk !== !!u.nomk) out.push({m:`${P}：${u.name} ${u.nomk?'改成這期請假直接扣學費':'取消請假直接扣學費'}`});
       if(s.fee !== u.fee) out.push({m:`${P}：${u.name} 學費 ${nt(s.fee)} → ${nt(u.fee)}`});
       if((s.paid||'') !== (u.paid||'')) out.push({m:`${P}：${u.name} 繳費日 ${s.paid?md(s.paid):'未繳費'} → ${u.paid?md(u.paid):'未繳費'}`});
     });
@@ -2726,6 +2771,7 @@ document.addEventListener('click', e=>{
   }
   if(t.dataset.offrange){ offRange = t.dataset.offrange; render(); return; }
   if(t.dataset.gotab){ offRange = 'month'; tab = t.dataset.gotab; render(); window.scrollTo(0,0); return; }
+  if(t.dataset.srcarryopen){ srCarryOpen = t.dataset.srcarryopen; render(); const f = document.querySelector(`[data-srcarry="${CSS.escape(srCarryOpen)}"]`); if(f) f.focus({preventScroll:true}); return; }
   if(t.dataset.histback){ tab = 'log'; render(); return; }
   if(t.dataset.histclear){ histDay = null; render(); return; }
   if(t.dataset.histdayGo){ histDay = t.dataset.histdayGo; histQ = ''; tab = 'hist'; render(); window.scrollTo(0,0); return; }
@@ -2867,6 +2913,16 @@ document.addEventListener('change', e=>{
     st.pkg = el.value; saveSelfrun(); render(); toast(`${st.name} 改成${pkgName(st.pkg, tm)}，學費 NT$${money(st.fee)}`); return;
   }
   if(el.dataset.srfee!==undefined){ const {st} = stuOf(el.dataset.srfee); if(!st) return; st.fee = Math.max(0, Math.round(Number(el.value)||0)); saveSelfrun(); render(); return; }
+  if(el.dataset.srcarry!==undefined || el.dataset.srnomk!==undefined){
+    const {t:tm, st} = stuOf(el.dataset.srcarry || el.dataset.srnomk); if(!st) return;
+    const lv = srTally(tm, termSessions(tm))[st.id].leave, before = srDue(tm, st, lv).due;
+    if(el.dataset.srcarry!==undefined){
+      const n = Math.max(0, Math.round(Number(el.value)||0));
+      if(n){ const p = prevStu(tm, st.name); st.carry = {n}; if(p.st) st.carry.from = p.st.id; } else delete st.carry;
+    } else { if(el.checked) st.nomk = true; else delete st.nomk; }
+    const after = srDue(tm, st, lv).due;
+    if((st.fee||0)===before || (st.fee||0)===pkgPrice(st.pkg, tm)){ st.fee = after; toast(`${st.name} 學費改成 NT$${money(after)}`); }   // 學費還是原本算的 → 跟著改
+    saveSelfrun(); render(); return; }
   if(el.dataset.srpaid!==undefined){ const {st} = stuOf(el.dataset.srpaid); if(!st) return; st.paid = el.value || ''; saveSelfrun(); render(); return; }
   if(el.dataset.srset!==undefined){
     const k = el.dataset.srset, v = Math.max(0, Math.round(Number(el.value)||0));
