@@ -416,6 +416,10 @@ button{cursor:pointer}
 :root[data-theme="dark"] .seg[aria-pressed="true"]{color:#0F1216}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .seg[aria-pressed="true"]{color:#0F1216}}
 .del{border:0;background:transparent;color:var(--muted);font-size:18px;width:28px;height:28px;border-radius:6px}
+.edx{border:0;background:transparent;color:var(--accent);font-size:12px;padding:4px 4px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.edx:hover{background:var(--surface-2)}
+.addform.editing{background:var(--wait-soft);border-top:1px solid var(--line)}
+.axedit{margin:0;font-weight:700;font-size:13px}
 .del:hover{color:var(--off);background:var(--off-soft)}
 @media (max-width:600px){
   .row{grid-template-columns:54px 1fr auto;grid-template-areas:"time what what" "time pay act"}
@@ -634,7 +638,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261120_2</footer>
+  <footer class="appver">ver 20261125_1</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -672,7 +676,7 @@ if(monthKey < START_MONTH) monthKey = START_MONTH;
 let schedule = clone(DEFAULT_SCHEDULE);
 let month = emptyMonth();
 let tab = 'log';
-let addOpenFor = null;
+let addOpenFor = null, editX = null;   // editX：正在修改的加課 id
 let confirmBulk = false;
 
 /* ---------- storage: this browser ---------- */
@@ -1339,6 +1343,30 @@ function axUpdate(){
   } else hint = `→ 對帳：團體課${place?` · ${place}`:'（請填地點）'}`;
   $('#ax-hint').textContent = hint;
 }
+// 加課表單；x 有值時是修改那堂加課（欄位先帶入）
+function addFormHtml(ds, x){
+  const pv = !!x && isPrivate(x.content);
+  return `<form class="addform${x?' editing':''}" data-date="${ds}"${x?` data-edit="${esc(x.id)}"`:''}>
+        ${x?`<p class="full axedit">修改這堂加課</p>`:''}
+        <label class="full">從現有課程帶入（選完還可以再改，也可以不選直接填）
+          <select class="field" id="ax-pick">
+            <option value="">— 不帶入，全部自己填 —</option>
+            ${pickOptions().map((o,i)=>`<option value="${i}">${esc(o.label)}</option>`).join('')}
+          </select></label>
+        <label>時間<input class="field" id="ax-time" type="time" value="${x?esc(x.time):'12:00'}" required></label>
+        ${x?`<label>日期<input class="field" id="ax-date" type="date" value="${ds}" required></label>`:''}
+        <label>分鐘<input class="field" id="ax-dur" type="number" min="0" step="5" inputmode="numeric" value="${x?x.dur:60}" required></label>
+        <div class="full axtype" role="radiogroup" aria-label="類型"><span class="lab">類型</span>
+          <label><input type="radio" name="ax-type" value="group"${pv?'':' checked'}> 團體課</label>
+          <label><input type="radio" name="ax-type" value="private"${pv?' checked':''}> 私教課</label></div>
+        <label class="wide" id="ax-content-wrap"${pv?' hidden':''}>上課內容<input class="field" id="ax-content" autocomplete="off" value="${x?esc(x.content):''}" list="dl-ax-content" placeholder="選現有課程或自己輸入"><datalist id="dl-ax-content">${allContents().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
+        <label class="wide" id="ax-student-wrap"${pv?'':' hidden'}>學生<input class="field" id="ax-student" autocomplete="off" value="${pv?esc(privName(x.content)):''}" list="dl-ax-student" placeholder="選或輸入學生名字"><datalist id="dl-ax-student">${privateNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
+        <label>地點<input class="field" id="ax-place" autocomplete="off" value="${x?esc(x.place):''}" list="dl-ax-place" placeholder="選現有地點或自己輸入" required>${placeList('dl-ax-place')}</label>
+        <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" value="${x?x.pay:''}" required></label>
+        <div class="btns"><button class="btn primary" type="submit">${x?'儲存':'加入'}</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
+        <p class="full axhint" id="ax-hint">→ 對帳：團體課（請填地點）</p>
+      </form>`;
+}
 function pickOptions(){
   const seen = new Set(), out = [];
   const add = (c, prefix) => {
@@ -1416,10 +1444,11 @@ function renderLog(days){
           <button class="seg no" aria-pressed="${it.status==='off'}" data-key="${esc(it.key)}" data-s="off">停課</button>
           ${it.status==='held' ? `<button class="seg subb" aria-pressed="${!!it.sub}" data-subopen="${esc(it.key)}" title="教練請假、找人代課">代課</button>`:''}
           ${it.status==='held' && isPrivate(it.content) && modeOf(privName(it.content))==='perclass' ? `<button class="seg paid" aria-pressed="${!!month.paid[it.key]}" data-paidbtn="${esc(it.key)}" title="堂結：這堂收到錢了嗎">${month.paid[it.key]?'已收':'收款'}</button>`:''}
-          ${it.extra?`<button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
+          ${it.extra?`<button class="edx" title="修改這堂加課" aria-label="修改這堂加課" data-edx="${esc(it.key)}">修改</button><button class="del" title="刪除這堂加課" aria-label="刪除這堂加課" data-del="${esc(it.key)}">×</button>`:''}
         </div>
       </div>`;
       if((it.status==='off' || subbed) && subOpen!==it.key) html += `<div class="whyrow${it.why?'':' empty'}"><label>${it.status==='off'?'停課':'代課'}原因<input class="field whyin" data-why="${esc(it.key)}" list="dl-why" maxlength="60" enterkeyhint="done" value="${esc(it.why)}" placeholder="選填，例如：場館休館"><button type="button" class="btn small whyok" data-whyok="${esc(it.key)}" hidden>確定</button></label></div>`;
+      if(it.extra && editX===it.key) html += addFormHtml(day.ds, month.extras.find(x=>x.id===it.key));
       if(it.sr && it.status==='held' && srOpen===it.key) html += srPanel(it.key);
       if(it.status==='held' && subOpen===it.key) html += `<form class="subform" data-key="${esc(it.key)}" autocomplete="off">
         <span class="subrule">⚠ 場館自己找人、自己付錢 → 不要記代課，按「<b>停課</b>」<br>✓ 場館付給教練、教練再轉給代課老師 → 在這裡記代課</span>
@@ -1430,25 +1459,9 @@ function renderLog(days){
         <datalist id="dl-subn">${subNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
       </form>`;
     });
-    if(addOpenFor===day.ds){
-      html += `<form class="addform" data-date="${day.ds}">
-        <label class="full">從現有課程帶入（選完還可以再改，也可以不選直接填）
-          <select class="field" id="ax-pick">
-            <option value="">— 不帶入，全部自己填 —</option>
-            ${pickOptions().map((o,i)=>`<option value="${i}">${esc(o.label)}</option>`).join('')}
-          </select></label>
-        <label>時間<input class="field" id="ax-time" type="time" value="12:00" required></label>
-        <label>分鐘<input class="field" id="ax-dur" type="number" min="0" step="5" inputmode="numeric" value="60" required></label>
-        <div class="full axtype" role="radiogroup" aria-label="類型"><span class="lab">類型</span>
-          <label><input type="radio" name="ax-type" value="group" checked> 團體課</label>
-          <label><input type="radio" name="ax-type" value="private"> 私教課</label></div>
-        <label class="wide" id="ax-content-wrap">上課內容<input class="field" id="ax-content" autocomplete="off" list="dl-ax-content" placeholder="選現有課程或自己輸入"><datalist id="dl-ax-content">${allContents().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
-        <label class="wide" id="ax-student-wrap" hidden>學生<input class="field" id="ax-student" autocomplete="off" list="dl-ax-student" placeholder="選或輸入學生名字"><datalist id="dl-ax-student">${privateNames().map(n=>`<option value="${esc(n)}">`).join('')}</datalist></label>
-        <label>地點<input class="field" id="ax-place" autocomplete="off" list="dl-ax-place" placeholder="選現有地點或自己輸入" required>${placeList('dl-ax-place')}</label>
-        <label>薪水<input class="field" id="ax-pay" type="number" min="0" step="50" inputmode="numeric" placeholder="例：900" required></label>
-        <div class="btns"><button class="btn primary" type="submit">加入</button><button class="btn" type="button" id="ax-cancel">取消</button></div>
-        <p class="full axhint" id="ax-hint">→ 對帳：團體課（請填地點）</p>
-      </form>`;
+    if(editX && month.extras.some(x=>x.id===editX && x.date===day.ds)){ /* 修改表單已經放在那堂下面 */ html += `<div class="addrow"><button class="addlink" data-add="${day.ds}">＋ 加一堂臨時課 / 代課</button></div>`; }
+    else if(addOpenFor===day.ds){
+      html += addFormHtml(day.ds);
     } else {
       html += `<div class="addrow"><button class="addlink" data-add="${day.ds}">＋ 加一堂臨時課 / 代課</button></div>`;
     }
@@ -2216,6 +2229,7 @@ function diffMonth(a, b){
     const x = ea[id], y = eb[id], z = y || x, L = `${md(z.date)} ${z.time} ${z.content} · ${z.place}`;
     if(!x){ add(z.date, `加課 ${L} · NT$${money(y.pay)}`); return; }
     if(!y){ add(z.date, `刪除加課 ${L}`); return; }
+    if(['date','time','dur','content','place'].some(k=>x[k]!==y[k])) add(y.date, `修改加課 ${md(x.date)} ${x.time} ${x.content} · ${x.place}${x.dur!==y.dur?`（${x.dur} 分）`:''} → ${md(y.date)} ${y.time} ${y.content} · ${y.place}${x.dur!==y.dur?`（${y.dur} 分）`:''}`);
     if((x.s==='off') !== (y.s==='off')) add(z.date, `${L}（加課）：${x.s==='off'?'停課 → 有開':'有開 → 停課'}`);
     if(x.pay !== y.pay) add(z.date, `${L}（加課）：金額 ${nt(x.pay)} → ${nt(y.pay)}`);
     if(x.mins !== y.mins) add(z.date, `${L}（加課）：上課 ${x.mins??x.dur} → ${y.mins??y.dur} 分鐘`);
@@ -2734,7 +2748,7 @@ function shiftMonth(n){
   const next = d.getFullYear()+'-'+pad(d.getMonth()+1);
   if(next < START_MONTH) return;
   monthKey = next; srTermId = null;   // 博派 follows the month again until a term is picked
-  addOpenFor=null; confirmBulk=false;
+  addOpenFor=null; editX=null; confirmBulk=false;
   watchMonth();
 }
 $('#prevMonth').onclick = ()=>shiftMonth(-1);
@@ -2841,8 +2855,9 @@ document.addEventListener('click', e=>{
     if(ns==='off' && cur!=='off'){ const w = document.querySelector(`.whyin[data-why="${CSS.escape(t.dataset.key)}"]`); if(w && !w.value){ w.focus({preventScroll:true}); toast('已停課，可以補充原因（選填）'); } }
     return; }
   if(t.dataset.del){ month.extras = month.extras.filter(x=>x.id!==t.dataset.del); saveMonth(); render(); toast('已刪除加課'); return; }
-  if(t.dataset.add){ addOpenFor=t.dataset.add; render(); const f=$('#ax-time'); f&&f.focus(); return; }
-  if(t.id==='ax-cancel'){ addOpenFor=null; render(); return; }
+  if(t.dataset.add){ addOpenFor=t.dataset.add; editX=null; render(); const f=$('#ax-time'); f&&f.focus(); return; }
+  if(t.id==='ax-cancel'){ addOpenFor=null; editX=null; render(); return; }
+  if(t.dataset.edx){ editX = t.dataset.edx; addOpenFor = null; render(); axUpdate(); const f=$('#ax-time'); f&&f.focus({preventScroll:true}); return; }
   if(t.dataset.jump){
     e.preventDefault();
     const sec = document.getElementById(t.dataset.jump); if(!sec) return;
@@ -3097,6 +3112,19 @@ document.addEventListener('submit', e=>{
   } else {
     if(!content){ toast('請填上課內容'); $('#ax-content').focus(); return; }
     if(isPrivate(content)){ toast('團體課的內容不能有「私教」或「私人課」，要記私教課請選「私教課」'); return; }
+  }
+  if(f.dataset.edit){   // 修改：保留有開／停課、代課、原因、堂結收款這些狀態
+    const x = month.extras.find(x=>x.id===f.dataset.edit); if(!x){ editX=null; render(); return; }
+    const nd = v('ax-date') || x.date, dur = Math.round(Number(v('ax-dur'))||60);
+    if(x.mins===x.dur || x.mins===undefined) delete x.mins;   // 沒改過分鐘的，跟著新的長度
+    Object.assign(x, {date:nd, time:v('ax-time'), dur, content, place:v('ax-place'), pay:Math.round(Number(v('ax-pay'))||0)});
+    editX = null;
+    if(nd.slice(0,7)!==monthKey){   // 改到別的月份：搬過去
+      const mo = moOf(nd.slice(0,7)); month.extras = month.extras.filter(y=>y.id!==x.id); mo.extras.push(x);
+      if(month.paid[x.id]){ mo.paid = mo.paid||{}; mo.paid[x.id] = month.paid[x.id]; delete month.paid[x.id]; }
+      saveMonth(); queue('months/'+nd.slice(0,7), mo); render(); toast(`已改到 ${md(nd)}（${Number(nd.slice(5,7))} 月）`); return;
+    }
+    saveMonth(); render(); toast('已修改這堂加課'); return;
   }
   month.extras.push({id:'x'+Date.now().toString(36), date:f.dataset.date, time:v('ax-time'), dur:Math.round(Number(v('ax-dur'))||60),
     content, place:v('ax-place'), kind:'', pay:Math.round(Number(v('ax-pay'))||0), s:'held'});
