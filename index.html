@@ -638,7 +638,7 @@ table.pinned thead th{background:var(--surface-2);box-shadow:0 1px 0 var(--line)
   </div>
 
   <main id="view"></main>
-  <footer class="appver">ver 20261125_1</footer>
+  <footer class="appver">ver 20261125_2</footer>
 </div>
 <button class="totop" id="toTop" type="button" aria-label="回到上面" tabindex="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>回到上面</button>
 <div class="toast" id="toast" hidden></div>
@@ -1824,13 +1824,14 @@ const md = d => `${Number(d.slice(5,7))}/${Number(d.slice(8,10))}`;
 function srWhenOpts(t, st, exceptKey){
   const out = [];
   termSessions(t).forEach(x=>{
-    if(x.key===exceptKey || x.status!=='held' || !x.enrolled.some(e=>e.id===st.id)) return;
+    if(x.status!=='held' || !x.enrolled.some(e=>e.id===st.id)) return;
+    const lv = x.leave.includes(st.id), here = x.key===exceptKey;
+    if(here && !lv) return;   // 這一堂：只有他請假時才能代他來上
     const covered = (selfrun.terms||[]).some(tt=>termSessions(tt).some(y=>y.guest.some(g=>g.forKey===x.key && g.for===st.id)));
     if(covered) return;
-    const lv = x.leave.includes(st.id);
-    out.push({k:x.key, l:`${md(x.ds)} ${srShort(x.cid)}${lv?'（已請假）':''}`, lv});
+    out.push({k:x.key, l:`${here?'這一堂 ':''}${md(x.ds)} ${srShort(x.cid)}${lv?'（已請假）':''}`, lv, here});
   });
-  return out.sort((a,b)=>(b.lv-a.lv) || a.k.localeCompare(b.k));
+  return out.sort((a,b)=>(b.here-a.here) || (b.lv-a.lv) || a.k.localeCompare(b.k));
 }
 function srPanel(key){
   const ds = key.slice(0,10), cid = key.slice(11), s = srSession(ds, cid); if(!s) return '';
@@ -2956,6 +2957,7 @@ document.addEventListener('change', e=>{
     const opts = o && o.dataset.when ? JSON.parse(o.dataset.when) : [];
     w.innerHTML = `<option value="">代替哪一堂的假…</option>` + opts.map(x=>`<option value="${esc(x.k)}">${esc(x.l)}</option>`).join('');
     w.hidden = !el.value; w.required = !!el.value;
+    const lvs = opts.filter(x=>x.lv); if(lvs.length===1 || (lvs[0] && lvs[0].here)) w.value = lvs[0].k;   // 只有一堂請假（或就是這一堂）→ 直接選好
     return;
   }
   if(el.name==='p' && el.form && el.form.classList.contains('sradd')){ const tm = (selfrun.terms||[]).find(x=>x.id===srShown); if(tm) el.form.elements.f.value = pkgPrice(el.value, tm); return; }
